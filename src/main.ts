@@ -16,13 +16,13 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  const tagsOrder = ['App', 'foods'];
   SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
       tagsSorter: (a: string, b: string) => {
-        const ai = tagsOrder.indexOf(a);
-        const bi = tagsOrder.indexOf(b);
+        const order = ['App', 'foods'];
+        const ai = order.indexOf(a);
+        const bi = order.indexOf(b);
         if (ai !== -1 && bi !== -1) return ai - bi;
         if (ai !== -1) return -1;
         if (bi !== -1) return 1;
