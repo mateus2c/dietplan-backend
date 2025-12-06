@@ -57,7 +57,7 @@ export class PatientsService {
     });
     return {
       id: created._id.toString(),
-      user: created.user.toString(),
+      user: userId,
       fullName: created.fullName,
       gender: created.gender,
       birthDate: new Date(created.birthDate).toISOString(),
