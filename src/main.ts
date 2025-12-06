@@ -17,7 +17,7 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   const tagsOrder = ['App', 'foods'];
-  SwaggerModule.setup('api', app, document, {
+  SwaggerModule.setup('docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
       tagsSorter: (a: string, b: string) => {
