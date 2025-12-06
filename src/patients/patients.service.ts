@@ -55,7 +55,15 @@ export class PatientsService {
       phone: data.phone,
       email: data.email,
     });
-    return { id: created._id.toString() };
+    return {
+      id: created._id.toString(),
+      user: created.user.toString(),
+      fullName: created.fullName,
+      gender: created.gender,
+      birthDate: new Date(created.birthDate).toISOString(),
+      phone: created.phone,
+      email: created.email,
+    };
   }
 
   async findById(id: string, userId: string) {
