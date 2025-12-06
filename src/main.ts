@@ -29,6 +29,13 @@ async function bootstrap() {
         return a.localeCompare(b);
       },
     },
+    customfavIcon:
+      'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',
+    customCssUrl: 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css',
+    customJs: [
+      'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js',
+      'https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js',
+    ],
   });
 
   await app.listen(process.env.PORT ?? 3001);
