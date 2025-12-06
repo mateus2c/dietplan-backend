@@ -22,7 +22,11 @@ export class UsersService {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     const created = await this.userModel.create({ email, passwordHash });
-    return { id: created._id.toString(), email: created.email };
+    return {
+      id: created._id.toString(),
+      email: created.email,
+      role: created.role,
+    };
   }
 
   async validateLogin(email: string, password: string) {
@@ -37,6 +41,6 @@ export class UsersService {
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return { id: user._id.toString(), email: user.email };
+    return { id: user._id.toString(), email: user.email, role: user.role };
   }
 }

@@ -11,6 +11,7 @@ import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
+import { Role } from './enums/role.enum';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -31,7 +32,12 @@ export class AuthController {
       },
     },
   })
-  async login(@Request() req: { user: { id: string; email: string } }) {
+  async login(
+    @Request()
+    req: {
+      user: { id: string; email: string; role: Role };
+    },
+  ) {
     return this.authService.login(req.user);
   }
 
@@ -39,8 +45,23 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({ summary: 'Get authenticated user profile' })
-  @ApiResponse({ status: 200, description: 'Returns user profile payload' })
-  profile(@Request() req: { user: { userId: string; email: string } }) {
+  @ApiResponse({
+    status: 200,
+    description: 'Returns user profile payload',
+    schema: {
+      example: {
+        userId: '656f1c2b9a3e8e0012345678',
+        email: 'john.doe@example.com',
+        role: 'user',
+      },
+    },
+  })
+  profile(
+    @Request()
+    req: {
+      user: { userId: string; email: string; role: Role };
+    },
+  ) {
     return req.user;
   }
 
@@ -86,7 +107,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Handle Google OAuth callback' })
   @ApiResponse({ status: 200, description: 'Returns JWT access_token' })
   async googleCallback(
-    @Request() req: { user: { id: string; email: string } },
+    @Request() req: { user: { id: string; email: string; role: Role } },
   ) {
     return this.authService.login(req.user);
   }

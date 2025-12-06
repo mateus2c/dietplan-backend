@@ -2,6 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
+import { Role } from './enums/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -16,13 +17,18 @@ export class AuthService {
     if (!user.passwordHash) return null;
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return null;
-    return { id: user._id.toString(), email: user.email };
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      role: (user.role ?? Role.User) as Role,
+    };
   }
 
-  async login(payload: { id: string; email: string }) {
+  async login(payload: { id: string; email: string; role: Role }) {
     const token = await this.jwtService.signAsync({
       sub: payload.id,
       email: payload.email,
+      role: payload.role,
     });
     return { access_token: token };
   }
@@ -44,7 +50,11 @@ export class AuthService {
         await user.save();
       }
     }
-    return { id: user._id.toString(), email: user.email };
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      role: (user.role ?? Role.User) as Role,
+    };
   }
 
   async createLinkState(userId: string) {
@@ -71,7 +81,11 @@ export class AuthService {
             user.provider = provider;
             user.providerId = providerId;
             await user.save();
-            return { id: user._id.toString(), email: user.email };
+            return {
+              id: user._id.toString(),
+              email: user.email,
+              role: (user.role ?? Role.User) as Role,
+            };
           }
         }
       } catch {
