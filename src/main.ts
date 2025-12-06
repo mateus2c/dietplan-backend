@@ -11,11 +11,24 @@ async function bootstrap() {
     .setDescription('API for diet plan management')
     .setVersion('1.0.0')
     .addBearerAuth()
+    .addTag('App')
+    .addTag('foods')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  const tagsOrder = ['App', 'foods'];
   SwaggerModule.setup('api', app, document, {
-    swaggerOptions: { persistAuthorization: true },
+    swaggerOptions: {
+      persistAuthorization: true,
+      tagsSorter: (a: string, b: string) => {
+        const ai = tagsOrder.indexOf(a);
+        const bi = tagsOrder.indexOf(b);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.localeCompare(b);
+      },
+    },
   });
 
   await app.listen(process.env.PORT ?? 3001);
