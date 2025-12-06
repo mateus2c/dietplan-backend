@@ -19,6 +19,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiOkResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -36,7 +37,21 @@ export class PatientsController {
   @Post()
   @ApiOperation({ summary: 'Create patient' })
   @ApiResponse({ status: 201, description: 'Patient created' })
-  @ApiBody({ type: CreatePatientDto })
+  @ApiBody({
+    type: CreatePatientDto,
+    examples: {
+      default: {
+        summary: 'Exemplo de cadastro de paciente',
+        value: {
+          fullName: 'Jane Doe',
+          gender: 'female',
+          birthDate: '1990-05-20',
+          phone: '+55 11 91234-5678',
+          email: 'jane.doe@example.com',
+        },
+      },
+    },
+  })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async create(@Body() dto: CreatePatientDto) {
     return this.patientsService.create(dto);
@@ -46,7 +61,7 @@ export class PatientsController {
   @ApiBearerAuth()
   @Get()
   @ApiOperation({ summary: 'List patients (paginated)' })
-  @ApiResponse({ status: 200, description: 'Returns paginated patients' })
+  @ApiOkResponse({ description: 'Returns paginated patients' })
   @ApiQuery({
     name: 'page',
     required: false,
@@ -75,7 +90,7 @@ export class PatientsController {
   @ApiBearerAuth()
   @Get(':id')
   @ApiOperation({ summary: 'Get patient by id' })
-  @ApiResponse({ status: 200, description: 'Returns patient details' })
+  @ApiOkResponse({ description: 'Returns patient details' })
   @ApiParam({ name: 'id', required: true })
   async getById(@Param('id') id: string) {
     return this.patientsService.findById(id);

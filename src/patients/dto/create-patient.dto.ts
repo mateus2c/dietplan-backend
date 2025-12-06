@@ -9,25 +9,25 @@ import {
 } from 'class-validator';
 
 export class CreatePatientDto {
-  @ApiProperty({ example: 'Jane Doe' })
+  @ApiProperty({ description: 'Nome completo' })
   @IsString()
   @MinLength(3)
   fullName: string;
 
-  @ApiProperty({ example: 'female', enum: ['male', 'female', 'other'] })
+  @ApiProperty({ enum: ['male', 'female', 'other'], description: 'Gênero' })
   @IsEnum(['male', 'female', 'other'])
   gender: 'male' | 'female' | 'other';
 
-  @ApiProperty({ example: '1990-05-20' })
+  @ApiProperty({ description: 'Data de nascimento (YYYY-MM-DD)' })
   @IsDateString()
   birthDate: string;
 
-  @ApiProperty({ example: '+55 11 91234-5678' })
+  @ApiProperty({ description: 'Telefone' })
   @IsString()
   @Matches(/^[+\d][\d\s()-]{6,}$/)
   phone: string;
 
-  @ApiProperty({ example: 'jane.doe@example.com' })
+  @ApiProperty({ description: 'Email' })
   @IsEmail()
   email: string;
 }
