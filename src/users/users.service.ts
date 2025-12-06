@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -15,6 +16,11 @@ export class UsersService {
   ) {}
 
   async register(email: string, password: string) {
+    if (!password || password.length < 8) {
+      throw new BadRequestException(
+        'password must be longer than or equal to 8 characters',
+      );
+    }
     const existing = await this.userModel.findOne({ email }).lean();
     if (existing) {
       throw new ConflictException('Email already registered');
