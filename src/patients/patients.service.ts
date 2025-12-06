@@ -75,31 +75,54 @@ export class PatientsService {
     if (!isValidObjectId(id)) {
       throw new BadRequestException('Invalid patient id');
     }
+    const current = await this.patientModel.findById(id).lean();
+    if (!current) {
+      throw new NotFoundException('Patient not found');
+    }
 
-    if (data.email) {
-      const existingByEmail = await this.patientModel
-        .findOne({ email: data.email, _id: { $ne: id } })
-        .lean();
-      if (existingByEmail) {
-        throw new ConflictException('Email already registered');
+    const updatePayload: Record<string, unknown> = {};
+    if (data.fullName !== undefined && current.fullName !== data.fullName) {
+      updatePayload.fullName = data.fullName;
+    }
+    if (data.gender !== undefined && current.gender !== data.gender) {
+      updatePayload.gender = data.gender;
+    }
+    if (data.birthDate !== undefined) {
+      const newBirth = new Date(data.birthDate);
+      const currBirth = new Date(current.birthDate);
+      if (newBirth.getTime() !== currBirth.getTime()) {
+        updatePayload.birthDate = newBirth;
       }
     }
-    if (data.phone) {
+    if (data.phone !== undefined && current.phone !== data.phone) {
       const existingByPhone = await this.patientModel
         .findOne({ phone: data.phone, _id: { $ne: id } })
         .lean();
       if (existingByPhone) {
         throw new ConflictException('Phone already registered');
       }
+      updatePayload.phone = data.phone;
+    }
+    if (data.email !== undefined && current.email !== data.email) {
+      const existingByEmail = await this.patientModel
+        .findOne({ email: data.email, _id: { $ne: id } })
+        .lean();
+      if (existingByEmail) {
+        throw new ConflictException('Email already registered');
+      }
+      updatePayload.email = data.email;
     }
 
-    const updatePayload: Record<string, unknown> = {};
-    if (data.fullName !== undefined) updatePayload.fullName = data.fullName;
-    if (data.gender !== undefined) updatePayload.gender = data.gender;
-    if (data.birthDate !== undefined)
-      updatePayload.birthDate = new Date(data.birthDate);
-    if (data.phone !== undefined) updatePayload.phone = data.phone;
-    if (data.email !== undefined) updatePayload.email = data.email;
+    if (Object.keys(updatePayload).length === 0) {
+      return {
+        id: current._id.toString(),
+        fullName: current.fullName,
+        gender: current.gender,
+        birthDate: new Date(current.birthDate).toISOString(),
+        phone: current.phone,
+        email: current.email,
+      };
+    }
 
     const updated = await this.patientModel
       .findByIdAndUpdate(id, updatePayload, { new: true })

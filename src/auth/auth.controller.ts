@@ -45,17 +45,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({ summary: 'Get authenticated user profile' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns user profile payload',
-    schema: {
-      example: {
-        userId: '656f1c2b9a3e8e0012345678',
-        email: 'john.doe@example.com',
-        role: 'user',
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Returns user profile payload' })
   profile(
     @Request()
     req: {

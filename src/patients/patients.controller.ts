@@ -28,7 +28,7 @@ import { ListPatientsQueryDto } from './dto/list-patients.query.dto';
 import { PatientsService } from './patients.service';
 
 @ApiTags('patients')
-@Controller('patients')
+@Controller()
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
@@ -89,9 +89,13 @@ export class PatientsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Get(':id')
-  @ApiOperation({ summary: 'Get patient by id' })
+  @ApiOperation({ summary: 'Get patient' })
   @ApiOkResponse({ description: 'Returns patient details' })
-  @ApiParam({ name: 'id', required: true })
+  @ApiParam({
+    name: 'id',
+    required: true,
+    schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9d' },
+  })
   async getById(@Param('id') id: string) {
     return this.patientsService.findById(id);
   }
@@ -101,8 +105,26 @@ export class PatientsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update patient' })
   @ApiResponse({ status: 200, description: 'Returns updated patient' })
-  @ApiParam({ name: 'id', required: true })
-  @ApiBody({ type: UpdatePatientDto })
+  @ApiParam({
+    name: 'id',
+    required: true,
+    schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9d' },
+  })
+  @ApiBody({
+    type: UpdatePatientDto,
+    examples: {
+      default: {
+        summary: 'Exemplo de atualização de paciente',
+        value: {
+          fullName: 'Jane Doe Silva',
+          gender: 'female',
+          birthDate: '1990-05-20',
+          phone: '+55 11 92345-6789',
+          email: 'jane.silva@example.com',
+        },
+      },
+    },
+  })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
     return this.patientsService.update(id, dto);
