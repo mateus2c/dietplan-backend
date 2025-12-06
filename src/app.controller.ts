@@ -1,6 +1,35 @@
 import { Controller, Get } from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiProperty,
+} from '@nestjs/swagger';
 import { AppService } from './app.service';
 
+class MacrosPer100gDto {
+  @ApiProperty()
+  protein: number;
+
+  @ApiProperty()
+  carbs: number;
+
+  @ApiProperty()
+  fat: number;
+
+  @ApiProperty()
+  kcal: number;
+}
+
+class FoodDto {
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty({ type: MacrosPer100gDto })
+  macrosPer100g: MacrosPer100gDto;
+}
+
+@ApiTags('App')
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
@@ -11,6 +40,8 @@ export class AppController {
   }
 
   @Get('foods')
+  @ApiOperation({ summary: 'List foods with macros per 100g' })
+  @ApiOkResponse({ type: FoodDto, isArray: true })
   getFoods(): Array<{
     name: string;
     macrosPer100g: {
