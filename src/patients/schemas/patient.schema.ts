@@ -5,6 +5,13 @@ export type PatientDocument = HydratedDocument<Patient>;
 
 @Schema({ collection: 'patients', timestamps: true })
 export class Patient {
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
+  user: Types.ObjectId;
   @Prop({ required: true, trim: true })
   fullName: string;
 
@@ -22,6 +29,9 @@ export class Patient {
 
   @Prop({ type: Types.ObjectId, ref: 'MealPlans', required: false })
   mealPlans?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Anamnesis', required: false })
+  anamnesis?: Types.ObjectId;
 }
 
 export const PatientSchema = SchemaFactory.createForClass(Patient);

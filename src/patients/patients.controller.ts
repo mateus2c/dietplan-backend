@@ -10,6 +10,7 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -36,7 +37,10 @@ export class PatientsController {
   @ApiBearerAuth()
   @Post()
   @ApiOperation({ summary: 'Create patient' })
-  @ApiResponse({ status: 201, description: 'Patient created' })
+  @ApiResponse({
+    status: 201,
+    description: 'Patient created and linked to current user',
+  })
   @ApiBody({
     type: CreatePatientDto,
     examples: {
@@ -53,8 +57,11 @@ export class PatientsController {
     },
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async create(@Body() dto: CreatePatientDto) {
-    return this.patientsService.create(dto);
+  async create(
+    @Body() dto: CreatePatientDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.patientsService.create(req.user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -79,8 +86,11 @@ export class PatientsController {
     description: 'Filtro por email (parcial)',
   })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
-  async list(@Query() query: ListPatientsQueryDto) {
-    return this.patientsService.list(query.page ?? 1, 10, {
+  async list(
+    @Query() query: ListPatientsQueryDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.patientsService.list(req.user.userId, query.page ?? 1, 10, {
       name: query.name,
       email: query.email,
     });
@@ -96,8 +106,11 @@ export class PatientsController {
     required: true,
     schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9d' },
   })
-  async getById(@Param('id') id: string) {
-    return this.patientsService.findById(id);
+  async getById(
+    @Param('id') id: string,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.patientsService.findById(id, req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -126,8 +139,12 @@ export class PatientsController {
     },
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  async update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
-    return this.patientsService.update(id, dto);
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePatientDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.patientsService.update(id, req.user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -136,7 +153,10 @@ export class PatientsController {
   @ApiOperation({ summary: 'Delete patient' })
   @ApiResponse({ status: 200, description: 'Patient deleted' })
   @ApiParam({ name: 'id', required: true })
-  async remove(@Param('id') id: string) {
-    return this.patientsService.remove(id);
+  async remove(
+    @Param('id') id: string,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.patientsService.remove(id, req.user.userId);
   }
 }

@@ -5,23 +5,36 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, isValidObjectId } from 'mongoose';
+import { Model, isValidObjectId, Types } from 'mongoose';
 import { Patient, PatientDocument } from './schemas/patient.schema';
+import { User, UserDocument } from '../users/schemas/user.schema';
 
 @Injectable()
 export class PatientsService {
   constructor(
     @InjectModel(Patient.name)
     private readonly patientModel: Model<PatientDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async create(data: {
-    fullName: string;
-    gender: 'male' | 'female' | 'other';
-    birthDate: string;
-    phone: string;
-    email: string;
-  }) {
+  async create(
+    userId: string,
+    data: {
+      fullName: string;
+      gender: 'male' | 'female' | 'other';
+      birthDate: string;
+      phone: string;
+      email: string;
+    },
+  ) {
+    if (!isValidObjectId(userId)) {
+      throw new BadRequestException('Invalid user id');
+    }
+    const user = await this.userModel.findById(userId).lean();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
     const existingByEmail = await this.patientModel
       .findOne({ email: data.email })
       .lean();
@@ -35,6 +48,7 @@ export class PatientsService {
       throw new ConflictException('Phone already registered');
     }
     const created = await this.patientModel.create({
+      user: new Types.ObjectId(userId),
       fullName: data.fullName,
       gender: data.gender,
       birthDate: new Date(data.birthDate),
@@ -44,12 +58,15 @@ export class PatientsService {
     return { id: created._id.toString() };
   }
 
-  async findById(id: string) {
+  async findById(id: string, userId: string) {
     if (!isValidObjectId(id)) {
       throw new BadRequestException('Invalid patient id');
     }
     const patient = await this.patientModel.findById(id).lean();
     if (!patient) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (patient.user?.toString() !== userId) {
       throw new NotFoundException('Patient not found');
     }
     return {
@@ -64,6 +81,7 @@ export class PatientsService {
 
   async update(
     id: string,
+    userId: string,
     data: Partial<{
       fullName: string;
       gender: 'male' | 'female' | 'other';
@@ -77,6 +95,9 @@ export class PatientsService {
     }
     const current = await this.patientModel.findById(id).lean();
     if (!current) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (current.user?.toString() !== userId) {
       throw new NotFoundException('Patient not found');
     }
 
@@ -140,7 +161,7 @@ export class PatientsService {
     };
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: string) {
     if (!isValidObjectId(id)) {
       throw new BadRequestException('Invalid patient id');
     }
@@ -148,10 +169,14 @@ export class PatientsService {
     if (!deleted) {
       throw new NotFoundException('Patient not found');
     }
+    if (deleted.user?.toString() !== userId) {
+      throw new NotFoundException('Patient not found');
+    }
     return { deleted: true };
   }
 
   async list(
+    userId: string,
     page = 1,
     pageSize = 10,
     filters?: { name?: string; email?: string },
@@ -161,7 +186,7 @@ export class PatientsService {
     const size = pageSize;
     const skip = (p - 1) * size;
     const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const query: Record<string, unknown> = {};
+    const query: Record<string, unknown> = { user: new Types.ObjectId(userId) };
     if (filters?.name) {
       query.fullName = { $regex: esc(filters.name), $options: 'i' };
     }

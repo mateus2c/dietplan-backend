@@ -6,6 +6,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PatientsModule } from './patients/patients.module';
 import { MealPlansModule } from './patients/meal-plans/meal-plans.module';
+import { AnamnesisModule } from './patients/anamnesis/anamnesis.module';
 import { FoodsModule } from './foods/foods.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -24,6 +25,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AuthModule,
     PatientsModule,
     MealPlansModule,
+    AnamnesisModule,
     FoodsModule,
     RouterModule.register([
       {
@@ -33,6 +35,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
           {
             path: ':patientId/meal-plans',
             module: MealPlansModule,
+          },
+          {
+            path: ':patientId/anamnesis',
+            module: AnamnesisModule,
           },
         ],
       },

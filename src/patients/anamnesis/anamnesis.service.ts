@@ -5,15 +5,15 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, isValidObjectId, Types } from 'mongoose';
-import { MealPlans, MealPlansDocument } from './schemas/meal-plans.schema';
+import { Model, Types, isValidObjectId } from 'mongoose';
+import { Anamnesis, AnamnesisDocument } from './schemas/anamnesis.schema';
 import { Patient, PatientDocument } from '../schemas/patient.schema';
 
 @Injectable()
-export class MealPlansService {
+export class AnamnesisService {
   constructor(
-    @InjectModel(MealPlans.name)
-    private readonly mealPlansModel: Model<MealPlansDocument>,
+    @InjectModel(Anamnesis.name)
+    private readonly anamnesesModel: Model<AnamnesisDocument>,
     @InjectModel(Patient.name)
     private readonly patientModel: Model<PatientDocument>,
   ) {}
@@ -26,23 +26,23 @@ export class MealPlansService {
     if (!owner || owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
-    const doc = await this.mealPlansModel
+    const doc = await this.anamnesesModel
       .findOne({ patient: patientId })
       .lean();
     if (!doc) {
-      throw new NotFoundException('Meal plans not found for patient');
+      throw new NotFoundException('Anamnesis not found for patient');
     }
     return {
       id: doc._id.toString(),
       patientId: doc.patient.toString(),
-      plans: doc.plans,
+      items: doc.items,
     };
   }
 
-  async addPlan(
+  async addItem(
     patientId: string,
     userId: string,
-    plan: MealPlans['plans'][number],
+    item: Anamnesis['items'][number],
   ) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
@@ -51,114 +51,112 @@ export class MealPlansService {
     if (!owner || owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
-    const updated = await this.mealPlansModel
+    const updated = await this.anamnesesModel
       .findOneAndUpdate(
         { patient: patientId },
-        { $setOnInsert: { patient: patientId }, $push: { plans: plan } },
+        { $setOnInsert: { patient: patientId }, $push: { items: item } },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       )
       .lean();
     await this.patientModel
-      .findByIdAndUpdate(patientId, { mealPlans: updated._id }, { new: false })
+      .findByIdAndUpdate(patientId, { anamnesis: updated._id }, { new: false })
       .lean();
     return {
       id: updated._id.toString(),
       patientId: updated.patient.toString(),
-      plans: updated.plans,
+      items: updated.items,
     };
   }
 
-  async patchPlanById(
+  async patchItemById(
     patientId: string,
-    planId: string,
+    itemId: string,
     userId: string,
-    partial: Partial<MealPlans['plans'][number]>,
+    partial: Partial<Anamnesis['items'][number]>,
   ) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
     }
-    if (!isValidObjectId(planId)) {
-      throw new BadRequestException('Invalid plan id');
+    if (!isValidObjectId(itemId)) {
+      throw new BadRequestException('Invalid item id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
     if (!owner || owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
-    const castPlanId = new Types.ObjectId(planId);
-    const currentDoc = await this.mealPlansModel
+    const castItemId = new Types.ObjectId(itemId);
+    const currentDoc = await this.anamnesesModel
       .findOne({ patient: patientId })
       .lean();
     if (!currentDoc) {
-      throw new NotFoundException('Meal plans not found for patient');
+      throw new NotFoundException('Anamnesis not found for patient');
     }
-    const currentPlan = (currentDoc.plans || []).find((p: any) => {
+    const currentItem = (currentDoc.items || []).find((p: any) => {
       const pid =
         p._id instanceof Types.ObjectId ? p._id : new Types.ObjectId(p._id);
-      return pid.equals(castPlanId);
+      return pid.equals(castItemId);
     });
     const setPayload: Record<string, unknown> = {};
     if (
       partial.title !== undefined &&
-      (!currentPlan || currentPlan.title !== partial.title)
+      (!currentItem || currentItem.title !== partial.title)
     ) {
-      setPayload['plans.$.title'] = partial.title;
+      setPayload['items.$.title'] = partial.title;
     }
     if (
-      partial.meals !== undefined &&
-      (!currentPlan ||
-        JSON.stringify(currentPlan.meals ?? []) !==
-          JSON.stringify(partial.meals ?? []))
+      partial.description !== undefined &&
+      (!currentItem || currentItem.description !== partial.description)
     ) {
-      setPayload['plans.$.meals'] = partial.meals;
+      setPayload['items.$.description'] = partial.description;
     }
     if (Object.keys(setPayload).length === 0) {
       return {
         id: currentDoc._id.toString(),
         patientId: currentDoc.patient.toString(),
-        plans: currentDoc.plans,
+        items: currentDoc.items,
       };
     }
-    const updated = await this.mealPlansModel
+    const updated = await this.anamnesesModel
       .findOneAndUpdate(
-        { patient: patientId, 'plans._id': castPlanId },
+        { patient: patientId, 'items._id': castItemId },
         { $set: setPayload },
         { new: true },
       )
       .lean();
     if (!updated) {
       const doc = currentDoc;
-      const normalizedPlans = (doc.plans ?? []).map((p: any) => ({
+      const normalized = (doc.items ?? []).map((p: any) => ({
         _id: p._id ? new Types.ObjectId(p._id) : new Types.ObjectId(),
         title: p.title,
-        meals: p.meals,
+        description: p.description,
       }));
-      await this.mealPlansModel
+      await this.anamnesesModel
         .findOneAndUpdate(
           { _id: doc._id },
-          { $set: { plans: normalizedPlans } },
+          { $set: { items: normalized } },
           { new: true },
         )
         .lean();
-      const retry = await this.mealPlansModel
+      const retry = await this.anamnesesModel
         .findOneAndUpdate(
-          { _id: doc._id, 'plans._id': castPlanId },
+          { _id: doc._id, 'items._id': castItemId },
           { $set: setPayload },
           { new: true },
         )
         .lean();
       if (!retry) {
-        throw new NotFoundException('Diet plan not found for patient');
+        throw new NotFoundException('Anamnesis not found for patient');
       }
       return {
         id: retry._id.toString(),
         patientId: retry.patient.toString(),
-        plans: retry.plans,
+        items: retry.items,
       };
     }
     return {
       id: updated._id.toString(),
       patientId: updated.patient.toString(),
-      plans: updated.plans,
+      items: updated.items,
     };
   }
 }

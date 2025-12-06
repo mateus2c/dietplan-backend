@@ -16,6 +16,7 @@ async function bootstrap() {
     .addTag('auth')
     .addTag('patients')
     .addTag('meal-plans')
+    .addTag('anamnesis')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -29,12 +30,12 @@ async function bootstrap() {
           'auth',
           'patients',
           'meal-plans',
+          'anamnesis',
         ];
         return order.indexOf(a) - order.indexOf(b);
       },
     },
-    customfavIcon:
-      'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',
+    customfavIcon: 'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',
     customCssUrl: 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css',
     customJs: [
       'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js',

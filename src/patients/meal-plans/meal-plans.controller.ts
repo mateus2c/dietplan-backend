@@ -8,6 +8,7 @@ import {
   ValidationPipe,
   Post,
   Patch,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -72,8 +73,9 @@ export class MealPlansController {
   async addPlan(
     @Param('patientId') patientId: string,
     @Body() dto: DietPlanDto,
+    @Req() req: { user: { userId: string } },
   ) {
-    return this.service.addPlan(patientId, dto);
+    return this.service.addPlan(patientId, req.user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -120,8 +122,9 @@ export class MealPlansController {
     @Param('patientId') patientId: string,
     @Param('planId') planId: string,
     @Body() dto: UpdateDietPlanDto,
+    @Req() req: { user: { userId: string } },
   ) {
-    return this.service.patchPlanById(patientId, planId, dto);
+    return this.service.patchPlanById(patientId, planId, req.user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -133,7 +136,10 @@ export class MealPlansController {
   })
   @ApiParam({ name: 'patientId', required: true })
   @ApiOkResponse({ description: 'Returns meal plans document' })
-  async getByPatient(@Param('patientId') patientId: string) {
-    return this.service.getByPatientId(patientId);
+  async getByPatient(
+    @Param('patientId') patientId: string,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.service.getByPatientId(patientId, req.user.userId);
   }
 }
