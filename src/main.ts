@@ -13,6 +13,9 @@ async function bootstrap() {
     .addBearerAuth()
     .addTag('App')
     .addTag('foods')
+    .addTag('auth')
+    .addTag('patients')
+    .addTag('meal-plans')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -20,13 +23,14 @@ async function bootstrap() {
     swaggerOptions: {
       persistAuthorization: true,
       tagsSorter: (a: string, b: string) => {
-        const order = ['App', 'foods'];
-        const ai = order.indexOf(a);
-        const bi = order.indexOf(b);
-        if (ai !== -1 && bi !== -1) return ai - bi;
-        if (ai !== -1) return -1;
-        if (bi !== -1) return 1;
-        return a.localeCompare(b);
+        const order = [
+          'App',
+          'foods',
+          'auth',
+          'patients',
+          'meal-plans',
+        ];
+        return order.indexOf(a) - order.indexOf(b);
       },
     },
     customfavIcon:
