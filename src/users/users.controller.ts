@@ -19,14 +19,14 @@ export class UsersController {
   @ApiOperation({
     summary: 'Register user',
     description:
-      'Cria um novo usuário com email e senha. Retorna o identificador do usuário e informações básicas.',
+      'Creates a new user with email and password. Returns the user identifier and basic information.',
   })
   @ApiResponse({ status: 201, description: 'User registered' })
   @ApiBody({
     type: RegisterDto,
     examples: {
       default: {
-        summary: 'Exemplo de registro',
+        summary: 'Registration example',
         value: {
           email: 'john.doe@example.com',
           password: 'Str0ngP@ssw0rd',

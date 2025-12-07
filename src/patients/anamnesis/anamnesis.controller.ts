@@ -35,7 +35,7 @@ export class AnamnesisController {
   @ApiOperation({
     summary: 'Create anamnesis',
     description:
-      'Cria uma anamnese para o paciente informado e retorna o documento atualizado com todas as anamneses.',
+      'Creates an anamnesis entry for the given patient and returns the updated document with all entries.',
   })
   @ApiParam({ name: 'patientId', required: true })
   @ApiCreatedResponse({ description: 'Anamnesis created' })
@@ -43,19 +43,19 @@ export class AnamnesisController {
     type: CreateAnamnesisDto,
     examples: {
       default: {
-        summary: 'Exemplo de criação',
+        summary: 'Creation example',
         value: {
-          title: 'Anamnese inicial',
+          title: 'Initial anamnesis',
           description:
-            'Paciente relata dor lombar há 2 semanas, sem irradiação. Histórico de sedentarismo e sono irregular.',
+            'Patient reports lower back pain for 2 weeks, no radiation. History of sedentary lifestyle and irregular sleep.',
         },
       },
       comprehensive: {
-        summary: 'Exemplo mais detalhado',
+        summary: 'More detailed example',
         value: {
-          title: 'Consulta de avaliação completa',
+          title: 'Comprehensive assessment visit',
           description:
-            'Queixa principal: fadiga ao final do dia. Hábito alimentar: alto consumo de ultraprocessados. Histórico familiar: DM2 e HAS. Exames recentes: hemograma normal, glicemia de jejum 98 mg/dL. Objetivo: redução de peso e melhora da disposição.',
+            'Main complaint: fatigue at the end of the day. Eating habits: high intake of ultra-processed foods. Family history: type 2 diabetes and hypertension. Recent tests: normal blood count, fasting glucose 98 mg/dL. Goal: weight reduction and improved energy.',
         },
       },
     },
@@ -75,7 +75,7 @@ export class AnamnesisController {
   @ApiOperation({
     summary: 'Update anamnesis',
     description:
-      'Atualiza somente os campos enviados da anamnese. Se nada mudou, retorna o estado atual sem gravação.',
+      'Updates only the provided fields of the anamnesis. If nothing changed, returns the current state without saving.',
   })
   @ApiParam({ name: 'patientId', required: true })
   @ApiParam({ name: 'itemId', required: true })
@@ -84,24 +84,24 @@ export class AnamnesisController {
     type: UpdateAnamnesisDto,
     examples: {
       changeTitle: {
-        summary: 'Atualizar somente o título',
+        summary: 'Update only the title',
         value: {
-          title: 'Anamnese de retorno (30 dias)',
+          title: 'Follow-up anamnesis (30 days)',
         },
       },
       changeDescription: {
-        summary: 'Atualizar somente a descrição',
+        summary: 'Update only the description',
         value: {
           description:
-            'Evolução: redução de 2kg, melhora da qualidade do sono, aderência parcial ao plano alimentar. Ajustar ingestão proteica e hidratação.',
+            'Progress: 2kg reduction, improved sleep quality, partial adherence to the diet plan. Adjust protein intake and hydration.',
         },
       },
       changeBoth: {
-        summary: 'Atualizar título e descrição',
+        summary: 'Update title and description',
         value: {
-          title: 'Anamnese pós-exames',
+          title: 'Post-exam anamnesis',
           description:
-            'Revisão após exames: perfil lipídico dentro da normalidade, iniciar protocolo de atividade física leve e orientação nutricional personalizada.',
+            'Review after tests: lipid profile within normal range, start light physical activity protocol and provide personalized nutritional guidance.',
         },
       },
     },
@@ -121,7 +121,7 @@ export class AnamnesisController {
   @Get()
   @ApiOperation({
     summary: 'Get anamnesis',
-    description: 'Obtém todas as anamneses do paciente informado.',
+    description: 'Fetches all anamnesis items for the given patient.',
   })
   @ApiParam({ name: 'patientId', required: true })
   @ApiOkResponse({ description: 'Returns anamneses document' })

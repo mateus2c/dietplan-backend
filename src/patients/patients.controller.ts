@@ -45,7 +45,7 @@ export class PatientsController {
     type: CreatePatientDto,
     examples: {
       default: {
-        summary: 'Exemplo de cadastro de paciente',
+        summary: 'Patient creation example',
         value: {
           fullName: 'Jane Doe',
           gender: 'female',
@@ -73,17 +73,17 @@ export class PatientsController {
     name: 'page',
     required: false,
     schema: { type: 'integer', minimum: 1 },
-    description: 'Página atual (padrão 1)',
+    description: 'Current page (default 1)',
   })
   @ApiQuery({
     name: 'name',
     required: false,
-    description: 'Filtro por nome (parcial)',
+    description: 'Name filter (partial)',
   })
   @ApiQuery({
     name: 'email',
     required: false,
-    description: 'Filtro por email (parcial)',
+    description: 'Email filter (partial)',
   })
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async list(
@@ -127,7 +127,7 @@ export class PatientsController {
     type: UpdatePatientDto,
     examples: {
       default: {
-        summary: 'Exemplo de atualização de paciente',
+        summary: 'Patient update example',
         value: {
           fullName: 'Jane Doe Silva',
           gender: 'female',

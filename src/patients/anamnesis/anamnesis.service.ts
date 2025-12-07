@@ -23,11 +23,14 @@ export class AnamnesisService {
       throw new BadRequestException('Invalid patient id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const doc = await this.anamnesesModel
-      .findOne({ patient: patientId })
+      .findOne({ patient: new Types.ObjectId(patientId) })
       .lean();
     if (!doc) {
       throw new NotFoundException('Anamnesis not found for patient');
@@ -48,16 +51,25 @@ export class AnamnesisService {
       throw new BadRequestException('Invalid patient id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const updated = await this.anamnesesModel
       .findOneAndUpdate(
-        { patient: patientId },
-        { $setOnInsert: { patient: patientId }, $push: { items: item } },
+        { patient: new Types.ObjectId(patientId) },
+        {
+          $setOnInsert: { patient: new Types.ObjectId(patientId) },
+          $push: { items: item },
+        },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       )
       .lean();
+    if (!updated) {
+      throw new NotFoundException('Failed to create or update anamnesis');
+    }
     await this.patientModel
       .findByIdAndUpdate(patientId, { anamnesis: updated._id }, { new: false })
       .lean();
@@ -81,12 +93,15 @@ export class AnamnesisService {
       throw new BadRequestException('Invalid item id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const castItemId = new Types.ObjectId(itemId);
     const currentDoc = await this.anamnesesModel
-      .findOne({ patient: patientId })
+      .findOne({ patient: new Types.ObjectId(patientId) })
       .lean();
     if (!currentDoc) {
       throw new NotFoundException('Anamnesis not found for patient');
@@ -118,7 +133,7 @@ export class AnamnesisService {
     }
     const updated = await this.anamnesesModel
       .findOneAndUpdate(
-        { patient: patientId, 'items._id': castItemId },
+        { patient: new Types.ObjectId(patientId), 'items._id': castItemId },
         { $set: setPayload },
         { new: true },
       )

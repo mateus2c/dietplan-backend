@@ -35,7 +35,7 @@ export class MealPlansController {
   @ApiOperation({
     summary: 'Create diet plan',
     description:
-      'Cria um plano alimentar para o paciente informado e retorna o documento atualizado com os planos.',
+      'Creates a diet plan for the given patient and returns the updated document with all plans.',
   })
   @ApiParam({ name: 'patientId', required: true })
   @ApiCreatedResponse({ description: 'Diet plan created' })
@@ -43,12 +43,12 @@ export class MealPlansController {
     type: DietPlanDto,
     examples: {
       default: {
-        summary: 'Exemplo de adição de diet plan',
+        summary: 'Diet plan addition example',
         value: {
-          title: 'Plano cutting',
+          title: 'Cutting plan',
           meals: [
             {
-              name: 'Café da manhã',
+              name: 'Breakfast',
               time: '08:00',
               items: [
                 { foodId: 'oats', quantityGrams: 60 },
@@ -56,7 +56,7 @@ export class MealPlansController {
               ],
             },
             {
-              name: 'Almoço',
+              name: 'Lunch',
               time: '12:30',
               items: [
                 { foodId: 'chicken_breast', quantityGrams: 150 },
@@ -84,7 +84,7 @@ export class MealPlansController {
   @ApiOperation({
     summary: 'Update diet plan',
     description:
-      'Atualiza somente os campos enviados do plano alimentar. Se nada mudou, retorna o estado atual sem gravação.',
+      'Updates only the provided fields of the diet plan. If nothing changed, returns the current state without saving.',
   })
   @ApiParam({
     name: 'patientId',
@@ -101,11 +101,11 @@ export class MealPlansController {
     type: UpdateDietPlanDto,
     examples: {
       mealsReplace: {
-        summary: 'Trocar todas as refeições (opcional)',
+        summary: 'Replace all meals (optional)',
         value: {
           meals: [
             {
-              name: 'Café da manhã',
+              name: 'Breakfast',
               time: '08:00',
               items: [
                 { foodId: 'oats', quantityGrams: 80 },
@@ -132,7 +132,7 @@ export class MealPlansController {
   @Get()
   @ApiOperation({
     summary: 'Get meal plans',
-    description: 'Obtém todos os planos alimentares do paciente informado.',
+    description: 'Fetches all diet plans for the given patient.',
   })
   @ApiParam({ name: 'patientId', required: true })
   @ApiOkResponse({ description: 'Returns meal plans document' })

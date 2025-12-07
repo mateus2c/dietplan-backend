@@ -8,7 +8,7 @@ export class FoodsController {
   @Get()
   @ApiOperation({
     summary: 'List foods',
-    description: 'Lista alimentos com macros por 100g',
+    description: 'Lists foods with macros per 100g',
   })
   @ApiOkResponse({ description: 'Returns foods list with macros per 100g' })
   list() {
