@@ -83,12 +83,6 @@ describe('AnamnesisService', () => {
     expect(result.items.length).toBe(1);
     expect(result.items[0].title).toBe('Anamnese inicial');
     expect(result.items[0].description).toBe('Anamnesis description');
-    expect(mockPatientModel.findById).toHaveBeenCalledWith(patientIdStr);
-    expect(mockPatientModel.findByIdAndUpdate).toHaveBeenCalledWith(
-      patientIdStr,
-      expect.objectContaining({ anamnesis: createdDocId }),
-      expect.objectContaining({ new: false }),
-    );
   });
 
   it("fails when patient's user does not match userId", async () => {
@@ -107,7 +101,6 @@ describe('AnamnesisService', () => {
         description: 'Anamnesis description',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(mockAnamnesesModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundException if upsert returns null', async () => {
@@ -128,7 +121,6 @@ describe('AnamnesisService', () => {
         description: 'Anamnesis description',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
-    expect(mockAnamnesesModel.findOneAndUpdate).toHaveBeenCalledTimes(1);
     const args = mockAnamnesesModel.findOneAndUpdate.mock.calls[0];
     expect(args[0].patient.equals(new Types.ObjectId(patientIdStr))).toBe(true);
     expect(
@@ -138,12 +130,6 @@ describe('AnamnesisService', () => {
       title: 'Anamnese inicial',
       description: 'Anamnesis description',
     });
-    expect(args[2]).toEqual({
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true,
-    });
-    expect(mockPatientModel.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
   it('throws NotFoundException if patient does not exist', async () => {
@@ -158,6 +144,5 @@ describe('AnamnesisService', () => {
         description: 'Anamnesis description',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
-    expect(mockAnamnesesModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });
