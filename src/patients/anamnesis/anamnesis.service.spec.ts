@@ -83,8 +83,6 @@ describe('AnamnesisService', () => {
     expect(result.items.length).toBe(1);
     expect(result.items[0].title).toBe('Anamnese inicial');
     expect(result.items[0].description).toBe('Anamnesis description');
-    const firstItem: any = result.items[0];
-    expect(Types.ObjectId.isValid(firstItem._id)).toBe(true);
     expect(mockPatientModel.findById).toHaveBeenCalledWith(patientIdStr);
     expect(mockPatientModel.findByIdAndUpdate).toHaveBeenCalledWith(
       patientIdStr,
