@@ -47,6 +47,6 @@ export class UsersService {
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return { id: user._id.toString(), email: user.email, role: user.role };
+    return { id: user.id, email: user.email, role: user.role };
   }
 }
