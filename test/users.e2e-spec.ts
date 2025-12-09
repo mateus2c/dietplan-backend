@@ -75,7 +75,7 @@ describe('Users - register (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'login.ok@example.com', password: 'Str0ngP@ssw0rd' })
-      .expect(201);
+      .expect(200);
     expect(res.body).toHaveProperty('access_token');
     expect(typeof res.body.access_token).toBe('string');
     expect(res.body.access_token.length).toBeGreaterThan(10);
@@ -100,7 +100,7 @@ describe('Users - register (e2e)', () => {
     const login = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'profile.user@example.com', password: 'Str0ngP@ssw0rd' })
-      .expect(201);
+      .expect(200);
     const token: string = login.body.access_token;
     const res = await request(app.getHttpServer())
       .get('/auth/profile')

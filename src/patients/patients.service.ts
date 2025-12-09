@@ -173,13 +173,14 @@ export class PatientsService {
     if (!isValidObjectId(id)) {
       throw new BadRequestException('Invalid patient id');
     }
-    const deleted = await this.patientModel.findByIdAndDelete(id).lean();
-    if (!deleted) {
+    const current = await this.patientModel.findById(id).lean();
+    if (!current) {
       throw new NotFoundException('Patient not found');
     }
-    if (deleted.user?.toString() !== userId) {
+    if (current.user?.toString() !== userId) {
       throw new NotFoundException('Patient not found');
     }
+    await this.patientModel.findByIdAndDelete(id).lean();
     return { deleted: true };
   }
 
