@@ -1,10 +1,19 @@
-import { Controller, Post, UseGuards, Request, Get, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseGuards,
+  Request,
+  Get,
+  Res,
+  HttpCode,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiTags,
   ApiOperation,
   ApiResponse,
+  ApiOkResponse,
   ApiBody,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -20,8 +29,9 @@ export class AuthController {
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Login with email/password via local strategy' })
-  @ApiResponse({ status: 200, description: 'Returns JWT access_token' })
+  @ApiOkResponse({ description: 'Returns JWT access_token' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -45,7 +55,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({ summary: 'Get authenticated user profile' })
-  @ApiResponse({ status: 200, description: 'Returns user profile payload' })
+  @ApiOkResponse({ description: 'Returns user profile payload' })
   profile(
     @Request()
     req: {
@@ -95,7 +105,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   @Get('google/callback')
   @ApiOperation({ summary: 'Handle Google OAuth callback' })
-  @ApiResponse({ status: 200, description: 'Returns JWT access_token' })
+  @ApiOkResponse({ description: 'Returns JWT access_token' })
   async googleCallback(
     @Request() req: { user: { id: string; email: string; role: Role } },
   ) {
