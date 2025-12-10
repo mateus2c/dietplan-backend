@@ -7,6 +7,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { UsersModule } from '../src/users/users.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { PatientsModule } from '../src/patients/patients.module';
+import { MealPlansModule } from '../src/patients/meal-plans/meal-plans.module';
+import { AnamnesisModule } from '../src/patients/anamnesis/anamnesis.module';
 import { GoogleStrategy } from '../src/auth/strategies/google.strategy';
 
 describe('Patients (e2e)', () => {
@@ -24,7 +26,18 @@ describe('Patients (e2e)', () => {
         UsersModule,
         AuthModule,
         PatientsModule,
-        RouterModule.register([{ path: 'patients', module: PatientsModule }]),
+        MealPlansModule,
+        AnamnesisModule,
+        RouterModule.register([
+          {
+            path: 'patients',
+            module: PatientsModule,
+            children: [
+              { path: ':patientId/meal-plans', module: MealPlansModule },
+              { path: ':patientId/anamnesis', module: AnamnesisModule },
+            ],
+          },
+        ]),
       ],
     })
       .overrideProvider(GoogleStrategy)
@@ -441,5 +454,67 @@ describe('Patients (e2e)', () => {
     expect(res.body.items.length).toBe(1);
     expect(res.body.items[0].email).toBe('combo@example.com');
     expect(String(res.body.items[0].fullName)).toContain('Combo Filter');
+  });
+
+  it('DELETE /patients cascades removal of meal-plans and anamnesis', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/patients')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        fullName: 'Cascade Test',
+        gender: 'female',
+        birthDate: '1991-02-02',
+        phone: '+55 11 95555-5556',
+        email: 'cascade@example.com',
+      })
+      .expect(201);
+    const pid: string = created.body.id;
+
+    await request(app.getHttpServer())
+      .post(`/patients/${pid}/meal-plans`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Plano teste',
+        meals: [
+          {
+            name: 'Breakfast',
+            time: '08:00',
+            items: [{ foodId: 'oats', quantityGrams: 60 }],
+          },
+        ],
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/patients/${pid}/anamnesis`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Inicial', description: 'Desc' })
+      .expect(201);
+
+    const beforePlansRes = await request(app.getHttpServer())
+      .get(`/patients/${pid}/meal-plans`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(beforePlansRes.body).toHaveProperty('patientId', pid);
+    const beforeAnamRes = await request(app.getHttpServer())
+      .get(`/patients/${pid}/anamnesis`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(beforeAnamRes.body).toHaveProperty('patientId', pid);
+
+    await request(app.getHttpServer())
+      .delete(`/patients/${pid}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get(`/patients/${pid}/meal-plans`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .get(`/patients/${pid}/anamnesis`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
+
+    // already validated above
   });
 });

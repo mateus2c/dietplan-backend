@@ -23,7 +23,10 @@ export class MealPlansService {
       throw new BadRequestException('Invalid patient id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const doc = await this.mealPlansModel

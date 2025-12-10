@@ -114,4 +114,32 @@ describe('Users - register (e2e)', () => {
   it('GET /auth/profile without token returns 401', async () => {
     await request(app.getHttpServer()).get('/auth/profile').expect(401);
   });
+
+  it('GET /auth/google/link returns 302 with Location and state', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ email: 'link.user@example.com', password: 'Str0ngP@ssw0rd' })
+      .expect(201);
+    const login = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'link.user@example.com', password: 'Str0ngP@ssw0rd' })
+      .expect(200);
+    const token: string = login.body.access_token;
+    const res = await request(app.getHttpServer())
+      .get('/auth/google/link')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(302);
+    const loc = res.headers['location'];
+    expect(typeof loc).toBe('string');
+    expect(loc).toContain('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(loc).toContain('client_id=');
+    expect(loc).toContain('redirect_uri=');
+    expect(loc).toContain('response_type=code');
+    expect(loc).toContain('scope=');
+    expect(loc).toContain('state=');
+  });
+
+  it('GET /auth/google/link without token returns 401', async () => {
+    await request(app.getHttpServer()).get('/auth/google/link').expect(401);
+  });
 });

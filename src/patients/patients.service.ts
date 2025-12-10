@@ -8,6 +8,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId, Types } from 'mongoose';
 import { Patient, PatientDocument } from './schemas/patient.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import {
+  MealPlans,
+  MealPlansDocument,
+} from './meal-plans/schemas/meal-plans.schema';
+import {
+  Anamnesis,
+  AnamnesisDocument,
+} from './anamnesis/schemas/anamnesis.schema';
 
 @Injectable()
 export class PatientsService {
@@ -16,6 +24,10 @@ export class PatientsService {
     private readonly patientModel: Model<PatientDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(MealPlans.name)
+    private readonly mealPlansModel: Model<MealPlansDocument>,
+    @InjectModel(Anamnesis.name)
+    private readonly anamnesesModel: Model<AnamnesisDocument>,
   ) {}
 
   async create(
@@ -180,6 +192,12 @@ export class PatientsService {
     if (current.user?.toString() !== userId) {
       throw new NotFoundException('Patient not found');
     }
+    await this.mealPlansModel
+      .findOneAndDelete({ patient: new Types.ObjectId(id) })
+      .lean();
+    await this.anamnesesModel
+      .findOneAndDelete({ patient: new Types.ObjectId(id) })
+      .lean();
     await this.patientModel.findByIdAndDelete(id).lean();
     return { deleted: true };
   }
