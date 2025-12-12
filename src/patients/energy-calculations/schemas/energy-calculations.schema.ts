@@ -25,12 +25,16 @@ export class EnergyCalculationEntry {
   @Prop({
     type: Number,
     required: false,
+    enum: Object.values(PhysicalActivityFactor).filter(
+      (v) => typeof v === 'number',
+    ) as number[],
   })
   physicalActivityFactor?: PhysicalActivityFactor;
 
   @Prop({
     type: Number,
     required: false,
+    enum: Object.values(InjuryFactor) as number[],
   })
   injuryFactor?: InjuryFactor;
 

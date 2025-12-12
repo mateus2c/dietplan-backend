@@ -48,7 +48,11 @@ export class UpdateEnergyCalculationDto {
   @IsOptional()
   @ValidateIf((o) => o.physicalActivityFactor !== undefined)
   @IsNumber()
-  @IsIn(Object.values(PhysicalActivityFactor))
+  @IsIn(
+    Object.values(PhysicalActivityFactor).filter(
+      (v) => typeof v === 'number',
+    ) as number[],
+  )
   physicalActivityFactor?: PhysicalActivityFactor;
 
   @ApiPropertyOptional({
@@ -59,7 +63,7 @@ export class UpdateEnergyCalculationDto {
   @IsOptional()
   @ValidateIf((o) => o.injuryFactor !== undefined)
   @IsNumber()
-  @IsIn(Object.values(InjuryFactor))
+  @IsIn(Object.values(InjuryFactor) as number[])
   injuryFactor?: InjuryFactor;
 
   @ApiPropertyOptional({
