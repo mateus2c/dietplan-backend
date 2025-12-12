@@ -6,15 +6,21 @@ import {
   ValidateNested,
   IsNumber,
   Min,
-  IsEnum,
+  IsIn,
   IsMilitaryTime,
 } from 'class-validator';
-import { Food } from '../../../foods/enums/food.enum';
+import { VALID_FOOD_IDS } from '../../../foods/data/food-data';
 
 export class MealItemDto {
-  @ApiProperty({ enum: Food })
-  @IsEnum(Food)
-  foodId: Food;
+  @ApiProperty({
+    enum: VALID_FOOD_IDS as any,
+    example: 'chicken_breast',
+    description: 'Food ID from available foods',
+    type: String,
+  })
+  @IsString()
+  @IsIn(VALID_FOOD_IDS)
+  foodId: string;
 
   @ApiProperty()
   @IsNumber()

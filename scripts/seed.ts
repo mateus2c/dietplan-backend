@@ -12,7 +12,7 @@ import {
 import { EnergyCalculationFormula } from '../src/patients/energy-calculations/enums/energy-calculation-formula.enum'
 import { PhysicalActivityFactor } from '../src/patients/energy-calculations/enums/physical-activity-factor.enum'
 import { InjuryFactor } from '../src/patients/energy-calculations/enums/injury-factor.enum'
-import { Food } from '../src/foods/enums/food.enum'
+import { VALID_FOOD_IDS } from '../src/foods/data/food-data'
 import { exit } from 'process'
 
 const firstNames = [
@@ -138,16 +138,16 @@ function generateRandomMealPlan(index: number) {
   const meals: Array<{
     name: string
     time: string
-    items: Array<{ foodId: Food; quantityGrams: number }>
+    items: Array<{ foodId: string; quantityGrams: number }>
   }> = []
   
   for (let i = 0; i < mealCount; i++) {
     const mealName = randomElement(mealNames)
     const mealTime = randomElement(mealTimes)
     const itemCount = randomInt(1, 4)
-    const items: Array<{ foodId: Food; quantityGrams: number }> = []
+    const items: Array<{ foodId: string; quantityGrams: number }> = []
     
-    const availableFoods = randomElements(Object.values(Food), itemCount)
+    const availableFoods = randomElements(VALID_FOOD_IDS, itemCount)
     for (const food of availableFoods) {
       items.push({
         foodId: food,

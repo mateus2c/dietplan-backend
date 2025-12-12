@@ -4,7 +4,7 @@ import request from 'supertest';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { FoodsModule } from '../src/foods/foods.module';
-import { Food } from '../src/foods/enums/food.enum';
+import { VALID_FOOD_IDS } from '../src/foods/data/food-data';
 import { getAllFoods } from '../src/foods/data/food-data';
 
 describe('Foods (e2e)', () => {
@@ -77,14 +77,13 @@ describe('Foods (e2e)', () => {
         });
       });
 
-      it('all food IDs are valid enum values', async () => {
+      it('all food IDs are valid food IDs', async () => {
         const res = await request(app.getHttpServer())
           .get('/foods')
           .expect(200);
 
-        const validFoodIds = Object.values(Food);
         res.body.forEach((food: any) => {
-          expect(validFoodIds).toContain(food.id);
+          expect(VALID_FOOD_IDS).toContain(food.id);
         });
       });
     });
