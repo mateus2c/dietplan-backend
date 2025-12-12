@@ -30,7 +30,7 @@ export class MealPlansService {
       throw new ForbiddenException('Not allowed');
     }
     const doc = await this.mealPlansModel
-      .findOne({ patient: patientId })
+      .findOne({ patient: new Types.ObjectId(patientId) })
       .lean();
     if (!doc) {
       throw new NotFoundException('Meal plans not found for patient');
@@ -51,13 +51,19 @@ export class MealPlansService {
       throw new BadRequestException('Invalid patient id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const updated = await this.mealPlansModel
       .findOneAndUpdate(
-        { patient: patientId },
-        { $setOnInsert: { patient: patientId }, $push: { plans: plan } },
+        { patient: new Types.ObjectId(patientId) },
+        {
+          $setOnInsert: { patient: new Types.ObjectId(patientId) },
+          $push: { plans: plan },
+        },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       )
       .lean();
@@ -84,12 +90,15 @@ export class MealPlansService {
       throw new BadRequestException('Invalid plan id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const castPlanId = new Types.ObjectId(planId);
     const currentDoc = await this.mealPlansModel
-      .findOne({ patient: patientId })
+      .findOne({ patient: new Types.ObjectId(patientId) })
       .lean();
     if (!currentDoc) {
       throw new NotFoundException('Meal plans not found for patient');
@@ -123,7 +132,7 @@ export class MealPlansService {
     }
     const updated = await this.mealPlansModel
       .findOneAndUpdate(
-        { patient: patientId, 'plans._id': castPlanId },
+        { patient: new Types.ObjectId(patientId), 'plans._id': castPlanId },
         { $set: setPayload },
         { new: true },
       )
@@ -173,12 +182,15 @@ export class MealPlansService {
       throw new BadRequestException('Invalid plan id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner || owner.user?.toString() !== userId) {
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
     const castPlanId = new Types.ObjectId(planId);
     const currentDoc = await this.mealPlansModel
-      .findOne({ patient: patientId })
+      .findOne({ patient: new Types.ObjectId(patientId) })
       .lean();
     if (!currentDoc) {
       throw new NotFoundException('Meal plans not found for patient');
@@ -193,7 +205,7 @@ export class MealPlansService {
     }
     const updated = await this.mealPlansModel
       .findOneAndUpdate(
-        { patient: patientId },
+        { patient: new Types.ObjectId(patientId) },
         { $pull: { plans: { _id: castPlanId } } },
         { new: true },
       )

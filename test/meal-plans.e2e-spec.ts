@@ -288,12 +288,12 @@ describe('Meal Plans (e2e)', () => {
           .expect(400);
       });
 
-      it('returns 403 when patientId does not exist (ownership check first)', async () => {
-        // Service checks ownership before checking if patient exists
+      it('returns 404 when patientId does not exist', async () => {
+        // Service checks existence before checking ownership
         await request(app.getHttpServer())
           .delete(`/patients/${nonExistentPatientId}/meal-plans/${planId}`)
           .set('Authorization', `Bearer ${token}`)
-          .expect(403);
+          .expect(404);
       });
 
       it('returns 404 when planId does not exist', async () => {

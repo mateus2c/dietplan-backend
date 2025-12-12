@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -93,7 +94,7 @@ export class PatientsService {
       throw new NotFoundException('Patient not found');
     }
     if (patient.user?.toString() !== userId) {
-      throw new NotFoundException('Patient not found');
+      throw new ForbiddenException('Not allowed');
     }
     return {
       id: patient._id.toString(),
@@ -124,7 +125,7 @@ export class PatientsService {
       throw new NotFoundException('Patient not found');
     }
     if (current.user?.toString() !== userId) {
-      throw new NotFoundException('Patient not found');
+      throw new ForbiddenException('Not allowed');
     }
 
     const updatePayload: Record<string, unknown> = {};
@@ -196,7 +197,7 @@ export class PatientsService {
       throw new NotFoundException('Patient not found');
     }
     if (current.user?.toString() !== userId) {
-      throw new NotFoundException('Patient not found');
+      throw new ForbiddenException('Not allowed');
     }
     await this.mealPlansModel
       .findOneAndDelete({ patient: new Types.ObjectId(id) })

@@ -1516,7 +1516,7 @@ describe('Patients (e2e)', () => {
       await request(app.getHttpServer())
         .get(`/patients/${patientId}`)
         .set('Authorization', `Bearer ${token2}`)
-        .expect(404);
+        .expect(403);
     });
 
     it('user cannot update other user patient (PATCH)', async () => {
@@ -1524,14 +1524,14 @@ describe('Patients (e2e)', () => {
         .patch(`/patients/${patientId}`)
         .set('Authorization', `Bearer ${token2}`)
         .send({ fullName: 'Hack Attempt' })
-        .expect(404);
+        .expect(403);
     });
 
     it('user cannot delete other user patient (DELETE)', async () => {
       await request(app.getHttpServer())
         .delete(`/patients/${patientId}`)
         .set('Authorization', `Bearer ${token2}`)
-        .expect(404);
+        .expect(403);
     });
 
     it('user only sees their own patients in list', async () => {
