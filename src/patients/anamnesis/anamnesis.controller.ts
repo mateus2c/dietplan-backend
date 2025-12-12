@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -130,5 +131,32 @@ export class AnamnesisController {
     @Req() req: { user: { userId: string } },
   ) {
     return this.service.getByPatientId(patientId, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Delete(':itemId')
+  @ApiOperation({
+    summary: 'Delete anamnesis item',
+    description:
+      'Deletes an anamnesis item by ID and returns the updated document with remaining items.',
+  })
+  @ApiParam({
+    name: 'patientId',
+    required: true,
+    schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9d' },
+  })
+  @ApiParam({
+    name: 'itemId',
+    required: true,
+    schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9e' },
+  })
+  @ApiOkResponse({ description: 'Anamnesis item deleted' })
+  async deleteItem(
+    @Param('patientId') patientId: string,
+    @Param('itemId') itemId: string,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.service.deleteItemById(patientId, itemId, req.user.userId);
   }
 }

@@ -841,4 +841,272 @@ describe('Anamnesis (e2e)', () => {
       expect(res.body.patientId).toBe(patientId);
     });
   });
+
+  describe('DELETE /patients/:patientId/anamnesis/:itemId', () => {
+    describe('Success cases', () => {
+      it('deletes item and returns updated document', async () => {
+        // Create an item to delete
+        const createRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Item to Delete',
+            description: 'This item will be deleted',
+          })
+          .expect(201);
+        const itemToDeleteId = String(
+          createRes.body.items[createRes.body.items.length - 1]._id ||
+            createRes.body.items[createRes.body.items.length - 1].id,
+        );
+        const itemsCountBefore = createRes.body.items.length;
+
+        const res = await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${itemToDeleteId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(Array.isArray(res.body.items)).toBe(true);
+        expect(res.body.items.length).toBe(itemsCountBefore - 1);
+        const deletedItem = res.body.items.find(
+          (p: any) => String(p._id || p.id) === itemToDeleteId,
+        );
+        expect(deletedItem).toBeUndefined();
+      });
+
+      it('deletes item and other items remain unchanged', async () => {
+        // Create two items
+        const createRes1 = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Item A',
+            description: 'First item',
+          })
+          .expect(201);
+        const itemAId = String(
+          createRes1.body.items[createRes1.body.items.length - 1]._id ||
+            createRes1.body.items[createRes1.body.items.length - 1].id,
+        );
+
+        // Wait a bit to ensure different timestamps
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        const createRes2 = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Item B',
+            description: 'Second item',
+          })
+          .expect(201);
+        const itemBId = String(
+          createRes2.body.items[createRes2.body.items.length - 1]._id ||
+            createRes2.body.items[createRes2.body.items.length - 1].id,
+        );
+
+        // Delete Item A
+        const deleteRes = await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${itemAId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        // Verify Item B still exists
+        const itemB = deleteRes.body.items.find(
+          (p: any) => String(p._id || p.id) === itemBId,
+        );
+        expect(itemB).toBeTruthy();
+        expect(itemB.title).toBe('Item B');
+
+        // Verify Item A is deleted
+        const itemA = deleteRes.body.items.find(
+          (p: any) => String(p._id || p.id) === itemAId,
+        );
+        expect(itemA).toBeUndefined();
+      });
+
+      it('returns document with empty items array when last item is deleted', async () => {
+        // Create a new patient with an item
+        const newPatient = await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'Single Item Patient',
+            gender: 'male',
+            birthDate: '1995-01-01',
+            phone: '+55 11 90000-4444',
+            email: 'single.item@example.com',
+          })
+          .expect(201);
+        const newPatientId = newPatient.body.id;
+
+        const createRes = await request(app.getHttpServer())
+          .post(`/patients/${newPatientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Only Item',
+            description: 'This is the only item',
+          })
+          .expect(201);
+        const onlyItemId = String(
+          createRes.body.items[0]._id || createRes.body.items[0].id,
+        );
+
+        const deleteRes = await request(app.getHttpServer())
+          .delete(`/patients/${newPatientId}/anamnesis/${onlyItemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(deleteRes.body).toHaveProperty('id');
+        expect(deleteRes.body).toHaveProperty('patientId', newPatientId);
+        expect(Array.isArray(deleteRes.body.items)).toBe(true);
+        expect(deleteRes.body.items.length).toBe(0);
+      });
+    });
+
+    describe('ID validation', () => {
+      it('returns 400 when patientId is invalid format', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/123/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when itemId is invalid format', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/123`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 404 when patientId does not exist', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${nonExistentPatientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+      });
+
+      it('returns 404 when itemId does not exist', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${nonExistentItemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+      });
+    });
+
+    describe('Authentication', () => {
+      it('returns 401 when no token is provided', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${itemId}`)
+          .expect(401);
+      });
+
+      it('returns 401 when token is invalid', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', 'Bearer invalid-token-12345')
+          .expect(401);
+      });
+
+      it('returns 401 when token format is incorrect', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', 'InvalidFormat token')
+          .expect(401);
+      });
+    });
+
+    describe('Authorization', () => {
+      it('returns 403 when user tries to delete item from another user patient', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token2}`)
+          .expect(403);
+      });
+
+      it('user can delete their own patient item', async () => {
+        // Create an item for user2's patient
+        const createRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId2}/anamnesis`)
+          .set('Authorization', `Bearer ${token2}`)
+          .send({
+            title: 'User2 Item',
+            description: 'Item for user2',
+          })
+          .expect(201);
+        const user2ItemId = String(
+          createRes.body.items[createRes.body.items.length - 1]._id ||
+            createRes.body.items[createRes.body.items.length - 1].id,
+        );
+
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId2}/anamnesis/${user2ItemId}`)
+          .set('Authorization', `Bearer ${token2}`)
+          .expect(200);
+      });
+
+      it('user cannot delete item from another user patient', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId2}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(403);
+      });
+    });
+
+    describe('Data relationships', () => {
+      it('deleted item is removed from anamnesis document', async () => {
+        // Create an item
+        const createRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Relationship Test Item',
+            description: 'Testing item removal',
+          })
+          .expect(201);
+        const testItemId = String(
+          createRes.body.items[createRes.body.items.length - 1]._id ||
+            createRes.body.items[createRes.body.items.length - 1].id,
+        );
+
+        // Delete the item
+        const deleteRes = await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${testItemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        // Verify item is not in the response
+        const deletedItem = deleteRes.body.items.find(
+          (p: any) => String(p._id || p.id) === testItemId,
+        );
+        expect(deletedItem).toBeUndefined();
+      });
+
+      it('anamnesis document maintains correct patient association after deletion', async () => {
+        // Create an item
+        const createRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Patient Association Test',
+            description: 'Testing patient association',
+          })
+          .expect(201);
+        const testItemId = String(
+          createRes.body.items[createRes.body.items.length - 1]._id ||
+            createRes.body.items[createRes.body.items.length - 1].id,
+        );
+
+        // Delete the item
+        const deleteRes = await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/anamnesis/${testItemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        // Verify patient association is maintained
+        expect(deleteRes.body.patientId).toBe(patientId);
+      });
+    });
+  });
 });

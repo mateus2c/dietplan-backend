@@ -174,4 +174,54 @@ export class AnamnesisService {
       items: updated.items,
     };
   }
+
+  async deleteItemById(
+    patientId: string,
+    itemId: string,
+    userId: string,
+  ) {
+    if (!isValidObjectId(patientId)) {
+      throw new BadRequestException('Invalid patient id');
+    }
+    if (!isValidObjectId(itemId)) {
+      throw new BadRequestException('Invalid item id');
+    }
+    const owner = await this.patientModel.findById(patientId).lean();
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
+      throw new ForbiddenException('Not allowed');
+    }
+    const castItemId = new Types.ObjectId(itemId);
+    const currentDoc = await this.anamnesesModel
+      .findOne({ patient: new Types.ObjectId(patientId) })
+      .lean();
+    if (!currentDoc) {
+      throw new NotFoundException('Anamnesis not found for patient');
+    }
+    const itemExists = (currentDoc.items || []).some((p: any) => {
+      const pid =
+        p._id instanceof Types.ObjectId ? p._id : new Types.ObjectId(p._id);
+      return pid.equals(castItemId);
+    });
+    if (!itemExists) {
+      throw new NotFoundException('Anamnesis item not found for patient');
+    }
+    const updated = await this.anamnesesModel
+      .findOneAndUpdate(
+        { patient: new Types.ObjectId(patientId) },
+        { $pull: { items: { _id: castItemId } } },
+        { new: true },
+      )
+      .lean();
+    if (!updated) {
+      throw new NotFoundException('Anamnesis not found for patient');
+    }
+    return {
+      id: updated._id.toString(),
+      patientId: updated.patient.toString(),
+      items: updated.items,
+    };
+  }
 }
