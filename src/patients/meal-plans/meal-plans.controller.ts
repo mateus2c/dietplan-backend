@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   UseGuards,
@@ -141,5 +142,32 @@ export class MealPlansController {
     @Req() req: { user: { userId: string } },
   ) {
     return this.service.getByPatientId(patientId, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Delete(':planId')
+  @ApiOperation({
+    summary: 'Delete diet plan',
+    description:
+      'Deletes a diet plan by ID and returns the updated document with remaining plans.',
+  })
+  @ApiParam({
+    name: 'patientId',
+    required: true,
+    schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9d' },
+  })
+  @ApiParam({
+    name: 'planId',
+    required: true,
+    schema: { type: 'string', example: '665f3b9c2a3d4e5f6a7b8c9e' },
+  })
+  @ApiOkResponse({ description: 'Diet plan deleted' })
+  async deletePlan(
+    @Param('patientId') patientId: string,
+    @Param('planId') planId: string,
+    @Req() req: { user: { userId: string } },
+  ) {
+    return this.service.deletePlanById(patientId, planId, req.user.userId);
   }
 }

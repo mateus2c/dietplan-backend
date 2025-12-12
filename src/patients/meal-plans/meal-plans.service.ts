@@ -164,4 +164,51 @@ export class MealPlansService {
       plans: updated.plans,
     };
   }
+
+  async deletePlanById(
+    patientId: string,
+    planId: string,
+    userId: string,
+  ) {
+    if (!isValidObjectId(patientId)) {
+      throw new BadRequestException('Invalid patient id');
+    }
+    if (!isValidObjectId(planId)) {
+      throw new BadRequestException('Invalid plan id');
+    }
+    const owner = await this.patientModel.findById(patientId).lean();
+    if (!owner || owner.user?.toString() !== userId) {
+      throw new ForbiddenException('Not allowed');
+    }
+    const castPlanId = new Types.ObjectId(planId);
+    const currentDoc = await this.mealPlansModel
+      .findOne({ patient: patientId })
+      .lean();
+    if (!currentDoc) {
+      throw new NotFoundException('Meal plans not found for patient');
+    }
+    const planExists = (currentDoc.plans || []).some((p: any) => {
+      const pid =
+        p._id instanceof Types.ObjectId ? p._id : new Types.ObjectId(p._id);
+      return pid.equals(castPlanId);
+    });
+    if (!planExists) {
+      throw new NotFoundException('Diet plan not found for patient');
+    }
+    const updated = await this.mealPlansModel
+      .findOneAndUpdate(
+        { patient: patientId },
+        { $pull: { plans: { _id: castPlanId } } },
+        { new: true },
+      )
+      .lean();
+    if (!updated) {
+      throw new NotFoundException('Meal plans not found for patient');
+    }
+    return {
+      id: updated._id.toString(),
+      patientId: updated.patient.toString(),
+      plans: updated.plans,
+    };
+  }
 }
