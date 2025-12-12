@@ -25,7 +25,7 @@ import { MealPlansService } from './meal-plans.service';
 import { DietPlanDto } from './dto/upsert-meal-plans.dto';
 import { UpdateDietPlanDto } from './dto/update-diet-plan.dto';
 
-@ApiTags('meal-plans')
+@ApiTags('patients/meal-plans')
 @Controller()
 export class MealPlansController {
   constructor(private readonly service: MealPlansService) {}

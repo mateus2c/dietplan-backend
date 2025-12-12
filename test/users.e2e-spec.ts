@@ -10,8 +10,6 @@ import { GoogleStrategy } from '../src/auth/strategies/google.strategy';
 describe('Users/Auth (e2e)', () => {
   let app: INestApplication;
   let mongod: MongoMemoryServer;
-  let token: string;
-  let userId: string;
 
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
@@ -46,7 +44,6 @@ describe('Users/Auth (e2e)', () => {
         expect(res.body).toHaveProperty('email', 'john.doe@example.com');
         expect(res.body).toHaveProperty('role', 'user');
         expect(res.body).not.toHaveProperty('passwordHash');
-        userId = res.body.id;
       });
 
       it('default role is user', async () => {
@@ -238,11 +235,10 @@ describe('Users/Auth (e2e)', () => {
         expect(res.body).toHaveProperty('access_token');
         expect(typeof res.body.access_token).toBe('string');
         expect(res.body.access_token.length).toBeGreaterThan(10);
-        token = res.body.access_token;
       });
 
       it('access_token can be used for authentication', async () => {
-        const loginRes = await request(app.getHttpServer())
+        await request(app.getHttpServer())
           .post('/auth/register')
           .send({
             email: 'token.test@example.com',
@@ -436,7 +432,10 @@ describe('Users/Auth (e2e)', () => {
       it('email corresponds to authenticated user', async () => {
         const login = await request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: 'profile.user@example.com', password: 'Str0ngP@ssw0rd' })
+          .send({
+            email: 'profile.user@example.com',
+            password: 'Str0ngP@ssw0rd',
+          })
           .expect(200);
         const profileToken: string = login.body.access_token;
 
@@ -450,7 +449,10 @@ describe('Users/Auth (e2e)', () => {
       it('role is present in response', async () => {
         const login = await request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: 'profile.user@example.com', password: 'Str0ngP@ssw0rd' })
+          .send({
+            email: 'profile.user@example.com',
+            password: 'Str0ngP@ssw0rd',
+          })
           .expect(200);
         const profileToken: string = login.body.access_token;
 
@@ -543,8 +545,10 @@ describe('Users/Auth (e2e)', () => {
         const loc = res.headers['location'];
         const stateMatch = loc.match(/state=([^&]+)/);
         expect(stateMatch).toBeTruthy();
-        expect(stateMatch[1]).toBeTruthy();
-        expect(stateMatch[1].length).toBeGreaterThan(0);
+        if (stateMatch) {
+          expect(stateMatch[1]).toBeTruthy();
+          expect(stateMatch[1].length).toBeGreaterThan(0);
+        }
       });
 
       it('client_id is present in redirect URL', async () => {

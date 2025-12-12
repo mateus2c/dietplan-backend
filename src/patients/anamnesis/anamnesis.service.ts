@@ -175,11 +175,7 @@ export class AnamnesisService {
     };
   }
 
-  async deleteItemById(
-    patientId: string,
-    itemId: string,
-    userId: string,
-  ) {
+  async deleteItemById(patientId: string, itemId: string, userId: string) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
     }

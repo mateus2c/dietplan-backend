@@ -150,7 +150,10 @@ describe('Anamnesis (e2e)', () => {
         expect(res.body.items.length).toBeGreaterThan(0);
         const newItem = res.body.items[res.body.items.length - 1];
         expect(newItem).toHaveProperty('title', 'Complete Structure Test');
-        expect(newItem).toHaveProperty('description', 'Testing complete response structure');
+        expect(newItem).toHaveProperty(
+          'description',
+          'Testing complete response structure',
+        );
         expect(newItem).toHaveProperty('_id');
       });
 
@@ -197,7 +200,9 @@ describe('Anamnesis (e2e)', () => {
         );
 
         // Verify both items are in the response
-        expect(secondRes.body.items.length).toBeGreaterThan(firstRes.body.items.length);
+        expect(secondRes.body.items.length).toBeGreaterThan(
+          firstRes.body.items.length,
+        );
         const firstItemInList = secondRes.body.items.find(
           (item: any) => String(item._id || item.id) === firstItemId,
         );

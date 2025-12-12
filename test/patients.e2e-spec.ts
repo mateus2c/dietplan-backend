@@ -9,6 +9,7 @@ import { AuthModule } from '../src/auth/auth.module';
 import { PatientsModule } from '../src/patients/patients.module';
 import { MealPlansModule } from '../src/patients/meal-plans/meal-plans.module';
 import { AnamnesisModule } from '../src/patients/anamnesis/anamnesis.module';
+import { EnergyCalculationModule } from '../src/patients/energy-calculation/energy-calculation.module';
 import { GoogleStrategy } from '../src/auth/strategies/google.strategy';
 
 describe('Patients (e2e)', () => {
@@ -17,7 +18,6 @@ describe('Patients (e2e)', () => {
   let token: string;
   let token2: string;
   let patientId: string;
-  let patientId2: string;
   let nonExistentPatientId: string;
 
   beforeAll(async () => {
@@ -31,6 +31,7 @@ describe('Patients (e2e)', () => {
         PatientsModule,
         MealPlansModule,
         AnamnesisModule,
+        EnergyCalculationModule,
         RouterModule.register([
           {
             path: 'patients',
@@ -38,6 +39,10 @@ describe('Patients (e2e)', () => {
             children: [
               { path: ':patientId/meal-plans', module: MealPlansModule },
               { path: ':patientId/anamnesis', module: AnamnesisModule },
+              {
+                path: ':patientId/energy-calculation',
+                module: EnergyCalculationModule,
+              },
             ],
           },
         ]),
@@ -101,7 +106,9 @@ describe('Patients (e2e)', () => {
         expect(res.body).toHaveProperty('phone', '+55 11 91234-5678');
         expect(res.body).toHaveProperty('email', 'jane.doe@example.com');
         expect(res.body).toHaveProperty('user');
-        expect(new Date(res.body.birthDate).toISOString()).toContain('1990-05-20');
+        expect(new Date(res.body.birthDate).toISOString()).toContain(
+          '1990-05-20',
+        );
         patientId = res.body.id;
       });
 
@@ -608,7 +615,6 @@ describe('Patients (e2e)', () => {
             email: 'john.roe@example.com',
           })
           .expect(201);
-        patientId2 = patientId;
 
         await request(app.getHttpServer())
           .post('/patients')
@@ -787,9 +793,7 @@ describe('Patients (e2e)', () => {
           .expect(200);
         expect(res.body.items.length).toBeGreaterThan(0);
         expect(
-          res.body.items.every((p: any) =>
-            String(p.fullName).includes('Jane'),
-          ),
+          res.body.items.every((p: any) => String(p.fullName).includes('Jane')),
         ).toBe(true);
       });
 
@@ -1294,7 +1298,7 @@ describe('Patients (e2e)', () => {
     });
 
     describe('Cascade deletion (5.2)', () => {
-      it('deletes meal-plans and anamnesis when patient is deleted', async () => {
+      it('deletes meal-plans, anamnesis and energy-calculation when patient is deleted', async () => {
         const created = await request(app.getHttpServer())
           .post('/patients')
           .set('Authorization', `Bearer ${token}`)
@@ -1327,6 +1331,15 @@ describe('Patients (e2e)', () => {
           .set('Authorization', `Bearer ${token}`)
           .send({ title: 'Inicial', description: 'Desc' })
           .expect(201);
+        await request(app.getHttpServer())
+          .post(`/patients/${pid}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 175,
+            weight: 80,
+            energyCalculationFormula: 'harris-benedict-1984',
+          })
+          .expect(201);
 
         await request(app.getHttpServer())
           .delete(`/patients/${pid}`)
@@ -1339,6 +1352,10 @@ describe('Patients (e2e)', () => {
           .expect(404);
         await request(app.getHttpServer())
           .get(`/patients/${pid}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+        await request(app.getHttpServer())
+          .get(`/patients/${pid}/energy-calculation`)
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
       });

@@ -25,7 +25,7 @@ import { AnamnesisService } from './anamnesis.service';
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { UpdateAnamnesisDto } from './dto/update-anamnesis.dto';
 
-@ApiTags('anamnesis')
+@ApiTags('patients/anamnesis')
 @Controller()
 export class AnamnesisController {
   constructor(private readonly service: AnamnesisService) {}

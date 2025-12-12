@@ -12,6 +12,10 @@ import {
   Anamnesis,
   AnamnesisSchema,
 } from './anamnesis/schemas/anamnesis.schema';
+import {
+  EnergyCalculation,
+  EnergyCalculationSchema,
+} from './energy-calculation/schemas/energy-calculation.schema';
 
 @Module({
   imports: [
@@ -20,6 +24,7 @@ import {
       { name: User.name, schema: UserSchema },
       { name: MealPlans.name, schema: MealPlansSchema },
       { name: Anamnesis.name, schema: AnamnesisSchema },
+      { name: EnergyCalculation.name, schema: EnergyCalculationSchema },
     ]),
   ],
   controllers: [PatientsController],

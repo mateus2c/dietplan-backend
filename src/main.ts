@@ -15,8 +15,9 @@ async function bootstrap() {
     .addTag('foods')
     .addTag('auth')
     .addTag('patients')
-    .addTag('meal-plans')
-    .addTag('anamnesis')
+    .addTag('patients/meal-plans', 'Meal plans for patients')
+    .addTag('patients/anamnesis', 'Anamnesis for patients')
+    .addTag('patients/energy-calculation', 'Energy calculation for patients')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -29,10 +30,17 @@ async function bootstrap() {
           'foods',
           'auth',
           'patients',
-          'meal-plans',
-          'anamnesis',
+          'patients/meal-plans',
+          'patients/anamnesis',
+          'patients/energy-calculation',
         ];
-        return order.indexOf(a) - order.indexOf(b);
+        const indexA = order.indexOf(a);
+        const indexB = order.indexOf(b);
+        // If not in order list, sort alphabetically
+        if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
       },
     },
     customfavIcon: 'https://unpkg.com/swagger-ui-dist@5/favicon-32x32.png',

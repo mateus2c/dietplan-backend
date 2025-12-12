@@ -1,0 +1,51 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+import { EnergyCalculationFormula } from '../enums/energy-calculation-formula.enum';
+import { PhysicalActivityFactor } from '../enums/physical-activity-factor.enum';
+import { InjuryFactor } from '../enums/injury-factor.enum';
+
+export type EnergyCalculationDocument = HydratedDocument<EnergyCalculation>;
+
+@Schema({ collection: 'energy_calculations', timestamps: true })
+export class EnergyCalculation {
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Patient',
+    required: true,
+    index: true,
+    unique: true,
+  })
+  patient: Types.ObjectId;
+
+  @Prop({ type: Number, required: false, min: 0 })
+  height?: number; // Altura em cm
+
+  @Prop({ type: Number, required: false, min: 0 })
+  weight?: number; // Peso em kg
+
+  @Prop({
+    type: String,
+    required: false,
+    trim: true,
+    enum: Object.values(EnergyCalculationFormula),
+  })
+  energyCalculationFormula?: EnergyCalculationFormula;
+
+  @Prop({
+    type: Number,
+    required: false,
+  })
+  physicalActivityFactor?: PhysicalActivityFactor;
+
+  @Prop({
+    type: Number,
+    required: false,
+  })
+  injuryFactor?: InjuryFactor;
+
+  @Prop({ type: Number, required: false, min: 0 })
+  pregnancyEnergyAdditional?: number; // Adicional energético de gestante (kcal)
+}
+
+export const EnergyCalculationSchema =
+  SchemaFactory.createForClass(EnergyCalculation);

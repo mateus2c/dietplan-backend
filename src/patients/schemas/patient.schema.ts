@@ -32,6 +32,9 @@ export class Patient {
 
   @Prop({ type: Types.ObjectId, ref: 'Anamnesis', required: false })
   anamnesis?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'EnergyCalculation', required: false })
+  energyCalculation?: Types.ObjectId;
 }
 
 export const PatientSchema = SchemaFactory.createForClass(Patient);

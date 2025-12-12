@@ -16,6 +16,10 @@ import {
   Anamnesis,
   AnamnesisDocument,
 } from './anamnesis/schemas/anamnesis.schema';
+import {
+  EnergyCalculation,
+  EnergyCalculationDocument,
+} from './energy-calculation/schemas/energy-calculation.schema';
 
 @Injectable()
 export class PatientsService {
@@ -28,6 +32,8 @@ export class PatientsService {
     private readonly mealPlansModel: Model<MealPlansDocument>,
     @InjectModel(Anamnesis.name)
     private readonly anamnesesModel: Model<AnamnesisDocument>,
+    @InjectModel(EnergyCalculation.name)
+    private readonly energyCalculationModel: Model<EnergyCalculationDocument>,
   ) {}
 
   async create(
@@ -196,6 +202,9 @@ export class PatientsService {
       .findOneAndDelete({ patient: new Types.ObjectId(id) })
       .lean();
     await this.anamnesesModel
+      .findOneAndDelete({ patient: new Types.ObjectId(id) })
+      .lean();
+    await this.energyCalculationModel
       .findOneAndDelete({ patient: new Types.ObjectId(id) })
       .lean();
     await this.patientModel.findByIdAndDelete(id).lean();

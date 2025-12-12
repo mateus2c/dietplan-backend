@@ -165,11 +165,7 @@ export class MealPlansService {
     };
   }
 
-  async deletePlanById(
-    patientId: string,
-    planId: string,
-    userId: string,
-  ) {
+  async deletePlanById(patientId: string, planId: string, userId: string) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
     }
