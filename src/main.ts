@@ -8,9 +8,9 @@ async function bootstrap() {
 
   // Enable CORS configuration
   const isProduction = process.env.NODE_ENV === 'production';
-  
+
   let allowedOrigins: string[] | string;
-  
+
   if (process.env.CORS_ORIGINS) {
     // If CORS_ORIGINS is explicitly set, use it
     allowedOrigins = process.env.CORS_ORIGINS.split(',').map((origin) =>

@@ -6,17 +6,8 @@ import { InjuryFactor } from '../enums/injury-factor.enum';
 
 export type EnergyCalculationDocument = HydratedDocument<EnergyCalculation>;
 
-@Schema({ collection: 'energy_calculations', timestamps: true })
-export class EnergyCalculation {
-  @Prop({
-    type: Types.ObjectId,
-    ref: 'Patient',
-    required: true,
-    index: true,
-    unique: true,
-  })
-  patient: Types.ObjectId;
-
+@Schema()
+export class EnergyCalculationEntry {
   @Prop({ type: Number, required: false, min: 0 })
   height?: number; // Altura em cm
 
@@ -45,6 +36,25 @@ export class EnergyCalculation {
 
   @Prop({ type: Number, required: false, min: 0 })
   pregnancyEnergyAdditional?: number; // Adicional energético de gestante (kcal)
+}
+
+const EnergyCalculationEntrySchema = SchemaFactory.createForClass(
+  EnergyCalculationEntry,
+);
+
+@Schema({ collection: 'energy_calculations', timestamps: true })
+export class EnergyCalculation {
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Patient',
+    required: true,
+    index: true,
+    unique: true,
+  })
+  patient: Types.ObjectId;
+
+  @Prop({ type: [EnergyCalculationEntrySchema], default: [] })
+  calculations: EnergyCalculationEntry[];
 }
 
 export const EnergyCalculationSchema =

@@ -43,90 +43,11 @@ export class EnergyCalculationService {
     return {
       id: doc._id.toString(),
       patientId: doc.patient.toString(),
-      height: doc.height,
-      weight: doc.weight,
-      energyCalculationFormula: doc.energyCalculationFormula,
-      physicalActivityFactor: doc.physicalActivityFactor,
-      injuryFactor: doc.injuryFactor,
-      pregnancyEnergyAdditional: doc.pregnancyEnergyAdditional,
+      calculations: doc.calculations,
     };
   }
 
-  async upsert(
-    patientId: string,
-    userId: string,
-    data: UpdateEnergyCalculationDto,
-  ) {
-    if (!isValidObjectId(patientId)) {
-      throw new BadRequestException('Invalid patient id');
-    }
-    const owner = await this.patientModel.findById(patientId).lean();
-    if (!owner) {
-      throw new NotFoundException('Patient not found');
-    }
-    if (owner.user?.toString() !== userId) {
-      throw new ForbiddenException('Not allowed');
-    }
-
-    const updatePayload: Record<string, unknown> = {};
-    if (data.height !== undefined) {
-      updatePayload.height = data.height;
-    }
-    if (data.weight !== undefined) {
-      updatePayload.weight = data.weight;
-    }
-    if (data.energyCalculationFormula !== undefined) {
-      updatePayload.energyCalculationFormula = data.energyCalculationFormula;
-    }
-    if (data.physicalActivityFactor !== undefined) {
-      updatePayload.physicalActivityFactor = data.physicalActivityFactor;
-    }
-    if (data.injuryFactor !== undefined) {
-      updatePayload.injuryFactor = data.injuryFactor;
-    }
-    if (data.pregnancyEnergyAdditional !== undefined) {
-      updatePayload.pregnancyEnergyAdditional = data.pregnancyEnergyAdditional;
-    }
-
-    const updated = await this.energyCalculationModel
-      .findOneAndUpdate(
-        { patient: new Types.ObjectId(patientId) },
-        {
-          $setOnInsert: { patient: new Types.ObjectId(patientId) },
-          $set: updatePayload,
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      )
-      .lean();
-
-    if (!updated) {
-      throw new NotFoundException(
-        'Failed to create or update energy calculation',
-      );
-    }
-
-    // Update patient reference
-    await this.patientModel
-      .findByIdAndUpdate(
-        patientId,
-        { energyCalculation: updated._id },
-        { new: false },
-      )
-      .lean();
-
-    return {
-      id: updated._id.toString(),
-      patientId: updated.patient.toString(),
-      height: updated.height,
-      weight: updated.weight,
-      energyCalculationFormula: updated.energyCalculationFormula,
-      physicalActivityFactor: updated.physicalActivityFactor,
-      injuryFactor: updated.injuryFactor,
-      pregnancyEnergyAdditional: updated.pregnancyEnergyAdditional,
-    };
-  }
-
-  async create(
+  async addCalculation(
     patientId: string,
     userId: string,
     data: CreateEnergyCalculationDto,
@@ -141,53 +62,46 @@ export class EnergyCalculationService {
     if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
-
-    // Check if energy calculation already exists
-    const existing = await this.energyCalculationModel
-      .findOne({ patient: new Types.ObjectId(patientId) })
+    const updated = await this.energyCalculationModel
+      .findOneAndUpdate(
+        { patient: new Types.ObjectId(patientId) },
+        {
+          $setOnInsert: { patient: new Types.ObjectId(patientId) },
+          $push: { calculations: data },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
       .lean();
-    if (existing) {
-      throw new BadRequestException(
-        'Energy calculation already exists for this patient',
+    if (!updated) {
+      throw new NotFoundException(
+        'Failed to create or update energy calculation',
       );
     }
-
-    const newDoc = new this.energyCalculationModel({
-      patient: new Types.ObjectId(patientId),
-      height: data.height,
-      weight: data.weight,
-      energyCalculationFormula: data.energyCalculationFormula,
-      physicalActivityFactor: data.physicalActivityFactor,
-      injuryFactor: data.injuryFactor,
-      pregnancyEnergyAdditional: data.pregnancyEnergyAdditional,
-    });
-
-    const saved = await newDoc.save();
-
-    // Update patient reference
     await this.patientModel
       .findByIdAndUpdate(
         patientId,
-        { energyCalculation: saved._id },
+        { energyCalculation: updated._id },
         { new: false },
       )
       .lean();
-
     return {
-      id: saved._id.toString(),
-      patientId: saved.patient.toString(),
-      height: saved.height,
-      weight: saved.weight,
-      energyCalculationFormula: saved.energyCalculationFormula,
-      physicalActivityFactor: saved.physicalActivityFactor,
-      injuryFactor: saved.injuryFactor,
-      pregnancyEnergyAdditional: saved.pregnancyEnergyAdditional,
+      id: updated._id.toString(),
+      patientId: updated.patient.toString(),
+      calculations: updated.calculations,
     };
   }
 
-  async deleteByPatientId(patientId: string, userId: string) {
+  async patchCalculationById(
+    patientId: string,
+    calculationId: string,
+    userId: string,
+    partial: UpdateEnergyCalculationDto,
+  ) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
+    }
+    if (!isValidObjectId(calculationId)) {
+      throw new BadRequestException('Invalid calculation id');
     }
     const owner = await this.patientModel.findById(patientId).lean();
     if (!owner) {
@@ -196,24 +110,174 @@ export class EnergyCalculationService {
     if (owner.user?.toString() !== userId) {
       throw new ForbiddenException('Not allowed');
     }
-
-    const deleted = await this.energyCalculationModel
-      .findOneAndDelete({ patient: new Types.ObjectId(patientId) })
+    const castCalculationId = new Types.ObjectId(calculationId);
+    const currentDoc = await this.energyCalculationModel
+      .findOne({ patient: new Types.ObjectId(patientId) })
       .lean();
-
-    if (!deleted) {
+    if (!currentDoc) {
       throw new NotFoundException('Energy calculation not found for patient');
     }
-
-    // Remove patient reference
-    await this.patientModel
-      .findByIdAndUpdate(
-        patientId,
-        { $unset: { energyCalculation: '' } },
-        { new: false },
+    const currentCalculation = (currentDoc.calculations || []).find(
+      (c: any) => {
+        const cid =
+          c._id instanceof Types.ObjectId ? c._id : new Types.ObjectId(c._id);
+        return cid.equals(castCalculationId);
+      },
+    );
+    const setPayload: Record<string, unknown> = {};
+    if (
+      partial.height !== undefined &&
+      (!currentCalculation || currentCalculation.height !== partial.height)
+    ) {
+      setPayload['calculations.$.height'] = partial.height;
+    }
+    if (
+      partial.weight !== undefined &&
+      (!currentCalculation || currentCalculation.weight !== partial.weight)
+    ) {
+      setPayload['calculations.$.weight'] = partial.weight;
+    }
+    if (
+      partial.energyCalculationFormula !== undefined &&
+      (!currentCalculation ||
+        currentCalculation.energyCalculationFormula !==
+          partial.energyCalculationFormula)
+    ) {
+      setPayload['calculations.$.energyCalculationFormula'] =
+        partial.energyCalculationFormula;
+    }
+    if (
+      partial.physicalActivityFactor !== undefined &&
+      (!currentCalculation ||
+        currentCalculation.physicalActivityFactor !==
+          partial.physicalActivityFactor)
+    ) {
+      setPayload['calculations.$.physicalActivityFactor'] =
+        partial.physicalActivityFactor;
+    }
+    if (
+      partial.injuryFactor !== undefined &&
+      (!currentCalculation ||
+        currentCalculation.injuryFactor !== partial.injuryFactor)
+    ) {
+      setPayload['calculations.$.injuryFactor'] = partial.injuryFactor;
+    }
+    if (
+      partial.pregnancyEnergyAdditional !== undefined &&
+      (!currentCalculation ||
+        currentCalculation.pregnancyEnergyAdditional !==
+          partial.pregnancyEnergyAdditional)
+    ) {
+      setPayload['calculations.$.pregnancyEnergyAdditional'] =
+        partial.pregnancyEnergyAdditional;
+    }
+    if (Object.keys(setPayload).length === 0) {
+      return {
+        id: currentDoc._id.toString(),
+        patientId: currentDoc.patient.toString(),
+        calculations: currentDoc.calculations,
+      };
+    }
+    const updated = await this.energyCalculationModel
+      .findOneAndUpdate(
+        {
+          patient: new Types.ObjectId(patientId),
+          'calculations._id': castCalculationId,
+        },
+        { $set: setPayload },
+        { new: true },
       )
       .lean();
+    if (!updated) {
+      const doc = currentDoc;
+      const normalized = (doc.calculations ?? []).map((c: any) => ({
+        _id: c._id ? new Types.ObjectId(c._id) : new Types.ObjectId(),
+        height: c.height,
+        weight: c.weight,
+        energyCalculationFormula: c.energyCalculationFormula,
+        physicalActivityFactor: c.physicalActivityFactor,
+        injuryFactor: c.injuryFactor,
+        pregnancyEnergyAdditional: c.pregnancyEnergyAdditional,
+      }));
+      await this.energyCalculationModel
+        .findOneAndUpdate(
+          { _id: doc._id },
+          { $set: { calculations: normalized } },
+          { new: true },
+        )
+        .lean();
+      const retry = await this.energyCalculationModel
+        .findOneAndUpdate(
+          { _id: doc._id, 'calculations._id': castCalculationId },
+          { $set: setPayload },
+          { new: true },
+        )
+        .lean();
+      if (!retry) {
+        throw new NotFoundException('Energy calculation not found for patient');
+      }
+      return {
+        id: retry._id.toString(),
+        patientId: retry.patient.toString(),
+        calculations: retry.calculations,
+      };
+    }
+    return {
+      id: updated._id.toString(),
+      patientId: updated.patient.toString(),
+      calculations: updated.calculations,
+    };
+  }
 
-    return { deleted: true };
+  async deleteCalculationById(
+    patientId: string,
+    calculationId: string,
+    userId: string,
+  ) {
+    if (!isValidObjectId(patientId)) {
+      throw new BadRequestException('Invalid patient id');
+    }
+    if (!isValidObjectId(calculationId)) {
+      throw new BadRequestException('Invalid calculation id');
+    }
+    const owner = await this.patientModel.findById(patientId).lean();
+    if (!owner) {
+      throw new NotFoundException('Patient not found');
+    }
+    if (owner.user?.toString() !== userId) {
+      throw new ForbiddenException('Not allowed');
+    }
+    const castCalculationId = new Types.ObjectId(calculationId);
+    const currentDoc = await this.energyCalculationModel
+      .findOne({ patient: new Types.ObjectId(patientId) })
+      .lean();
+    if (!currentDoc) {
+      throw new NotFoundException('Energy calculation not found for patient');
+    }
+    const calculationExists = (currentDoc.calculations || []).some((c: any) => {
+      const cid =
+        c._id instanceof Types.ObjectId ? c._id : new Types.ObjectId(c._id);
+      return cid.equals(castCalculationId);
+    });
+    if (!calculationExists) {
+      throw new NotFoundException(
+        'Energy calculation item not found for patient',
+      );
+    }
+    const updated = await this.energyCalculationModel
+      .findOneAndUpdate(
+        { patient: new Types.ObjectId(patientId) },
+        { $pull: { calculations: { _id: castCalculationId } } },
+        { new: true },
+      )
+      .lean();
+    if (!updated) {
+      throw new NotFoundException('Energy calculation not found for patient');
+    }
+    return {
+      id: updated._id.toString(),
+      patientId: updated.patient.toString(),
+      calculations: updated.calculations,
+    };
   }
 }

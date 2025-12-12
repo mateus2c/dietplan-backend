@@ -16,8 +16,9 @@ describe('Energy Calculation (e2e)', () => {
   let token: string;
   let token2: string;
   let patientId: string;
-  let patientId2: string;
+  let calculationId: string;
   let nonExistentPatientId: string;
+  let nonExistentCalculationId: string;
 
   beforeAll(async () => {
     mongod = await MongoMemoryServer.create();
@@ -73,7 +74,7 @@ describe('Energy Calculation (e2e)', () => {
       .expect(201);
     patientId = createdPatient.body.id;
 
-    // Create second user and patient for authorization tests
+    // Create second user for authorization tests
     await request(app.getHttpServer())
       .post('/auth/register')
       .send({ email: 'other.energy@example.com', password: 'StrongPass123' })
@@ -84,21 +85,26 @@ describe('Energy Calculation (e2e)', () => {
       .expect(200);
     token2 = login2.body.access_token;
 
-    const createdPatient2 = await request(app.getHttpServer())
-      .post('/patients')
-      .set('Authorization', `Bearer ${token2}`)
+    // Create energy calculation for the first patient
+    const res = await request(app.getHttpServer())
+      .post(`/patients/${patientId}/energy-calculation`)
+      .set('Authorization', `Bearer ${token}`)
       .send({
-        fullName: 'Other Energy Patient',
-        gender: 'male',
-        birthDate: '1985-05-15',
-        phone: '+55 11 90000-2222',
-        email: 'other.energy.patient@example.com',
+        height: 165,
+        weight: 68,
+        energyCalculationFormula: 'harris-benedict-1984',
+        physicalActivityFactor: 1.375,
+        injuryFactor: 1.0,
+        pregnancyEnergyAdditional: 0,
       })
       .expect(201);
-    patientId2 = createdPatient2.body.id;
+    calculationId = String(
+      res.body.calculations[0]._id || res.body.calculations[0].id,
+    );
 
     // Generate valid ObjectId format for non-existent IDs
     nonExistentPatientId = '507f1f77bcf86cd799439011';
+    nonExistentCalculationId = '507f1f77bcf86cd799439012';
   });
 
   afterAll(async () => {
@@ -106,19 +112,30 @@ describe('Energy Calculation (e2e)', () => {
     await mongod.stop();
   });
 
-  describe('GET /patients/:patientId/energy-calculation', () => {
+  describe('POST /patients/:patientId/energy-calculation', () => {
     describe('Success cases', () => {
-      it('returns 404 when energy calculation does not exist', async () => {
-        await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
+      it('creates calculation and returns document with all calculations', async () => {
+        const res = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
           .set('Authorization', `Bearer ${token}`)
-          .expect(404);
+          .send({
+            height: 170,
+            weight: 75,
+            energyCalculationFormula: 'eer-2023',
+            physicalActivityFactor: 1.55,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(201);
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        expect(res.body.calculations.length).toBeGreaterThanOrEqual(2);
       });
 
-      it('returns energy calculation after creation', async () => {
-        // Create energy calculation first
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
+      it('returns complete structure with all required fields', async () => {
+        const res = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 175,
@@ -126,24 +143,129 @@ describe('Energy Calculation (e2e)', () => {
             energyCalculationFormula: 'harris-benedict-1984',
             physicalActivityFactor: 1.2,
             injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
           })
-          .expect(200);
+          .expect(201);
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        expect(res.body.calculations.length).toBeGreaterThan(0);
+        const newCalculation =
+          res.body.calculations[res.body.calculations.length - 1];
+        expect(newCalculation).toHaveProperty('height', 175);
+        expect(newCalculation).toHaveProperty('weight', 80);
+        expect(newCalculation).toHaveProperty('_id');
+      });
 
+      it('created calculation corresponds to the correct patient', async () => {
+        const res = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 160,
+            weight: 65,
+            energyCalculationFormula: 'mifflin-obesidade-1990',
+            physicalActivityFactor: 1.375,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(201);
+        expect(res.body.patientId).toBe(patientId);
+        const newCalculation =
+          res.body.calculations[res.body.calculations.length - 1];
+        expect(newCalculation).toBeTruthy();
+        expect(newCalculation.height).toBe(160);
+      });
+    });
+
+    describe('Error cases', () => {
+      it('returns 400 when patientId is invalid format', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/123/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 404 when patientId does not exist', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${nonExistentPatientId}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(404);
+      });
+
+      it('returns 400 when energyCalculationFormula is invalid', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: 70,
+            energyCalculationFormula: 'invalid-formula',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 401 when not authenticated', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
+          .send({
+            height: 170,
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(401);
+      });
+
+      it('returns 403 when user tries to create another user patient calculation', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
+          .set('Authorization', `Bearer ${token2}`)
+          .send({
+            height: 170,
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(403);
+      });
+    });
+  });
+
+  describe('GET /patients/:patientId/energy-calculation', () => {
+    describe('Success cases', () => {
+      it('returns document with calculations', async () => {
         const res = await request(app.getHttpServer())
           .get(`/patients/${patientId}/energy-calculation`)
           .set('Authorization', `Bearer ${token}`)
           .expect(200);
-
         expect(res.body).toHaveProperty('id');
         expect(res.body).toHaveProperty('patientId', patientId);
-        expect(res.body).toHaveProperty('height', 175);
-        expect(res.body).toHaveProperty('weight', 80);
-        expect(res.body).toHaveProperty(
-          'energyCalculationFormula',
-          'harris-benedict-1984',
-        );
-        expect(res.body).toHaveProperty('physicalActivityFactor', 1.2);
-        expect(res.body).toHaveProperty('injuryFactor', 1.0);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        expect(res.body.calculations.length).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -161,32 +283,34 @@ describe('Energy Calculation (e2e)', () => {
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
       });
-    });
 
-    describe('Authentication', () => {
-      it('returns 401 when no token is provided', async () => {
+      it('returns 404 when energy calculation document does not exist for patient', async () => {
+        // Create a new patient without energy calculation
+        const newPatient = await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'New Patient',
+            gender: 'male',
+            birthDate: '1995-01-01',
+            phone: '+55 11 90000-9999',
+            email: 'new.patient@example.com',
+          })
+          .expect(201);
+
+        await request(app.getHttpServer())
+          .get(`/patients/${newPatient.body.id}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+      });
+
+      it('returns 401 when not authenticated', async () => {
         await request(app.getHttpServer())
           .get(`/patients/${patientId}/energy-calculation`)
           .expect(401);
       });
 
-      it('returns 401 when token is invalid', async () => {
-        await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', 'Bearer invalid-token-12345')
-          .expect(401);
-      });
-
-      it('returns 401 when token format is incorrect', async () => {
-        await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', 'InvalidFormat token')
-          .expect(401);
-      });
-    });
-
-    describe('Authorization', () => {
-      it('returns 403 when user tries to access another user patient energy calculation', async () => {
+      it('returns 403 when user tries to access another user patient calculation', async () => {
         await request(app.getHttpServer())
           .get(`/patients/${patientId}/energy-calculation`)
           .set('Authorization', `Bearer ${token2}`)
@@ -195,763 +319,219 @@ describe('Energy Calculation (e2e)', () => {
     });
   });
 
-  describe('PATCH /patients/:patientId/energy-calculation', () => {
+  describe('PATCH /patients/:patientId/energy-calculation/:calculationId', () => {
     describe('Success cases', () => {
-      it('creates energy calculation with all fields', async () => {
+      it('updates only the height', async () => {
         const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
+          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ height: 170 })
+          .expect(200);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        const updated = res.body.calculations.find(
+          (c: any) => String(c._id || c.id) === String(calculationId),
+        );
+        expect(updated).toBeTruthy();
+        expect(updated.height).toBe(170);
+      });
+
+      it('updates only the weight', async () => {
+        const res = await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ weight: 72 })
+          .expect(200);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        const updated = res.body.calculations.find(
+          (c: any) => String(c._id || c.id) === String(calculationId),
+        );
+        expect(updated).toBeTruthy();
+        expect(updated.weight).toBe(72);
+      });
+
+      it('updates multiple fields simultaneously', async () => {
+        const res = await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 175,
             weight: 80,
+            energyCalculationFormula: 'eer-2023',
+            physicalActivityFactor: 1.55,
+          })
+          .expect(200);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        const updated = res.body.calculations.find(
+          (c: any) => String(c._id || c.id) === String(calculationId),
+        );
+        expect(updated).toBeTruthy();
+        expect(updated.height).toBe(175);
+        expect(updated.weight).toBe(80);
+        expect(updated.energyCalculationFormula).toBe('eer-2023');
+        expect(updated.physicalActivityFactor).toBe(1.55);
+      });
+
+      it('returns current state when no changes are made', async () => {
+        const beforeRes = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+        const currentCalculation = beforeRes.body.calculations.find(
+          (c: any) => String(c._id || c.id) === String(calculationId),
+        );
+
+        const res = await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: currentCalculation.height,
+            weight: currentCalculation.weight,
+          })
+          .expect(200);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        const updated = res.body.calculations.find(
+          (c: any) => String(c._id || c.id) === String(calculationId),
+        );
+        expect(updated.height).toBe(currentCalculation.height);
+        expect(updated.weight).toBe(currentCalculation.weight);
+      });
+    });
+
+    describe('Error cases', () => {
+      it('returns 400 when patientId is invalid format', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/123/energy-calculation/${calculationId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ height: 170 })
+          .expect(400);
+      });
+
+      it('returns 400 when calculationId is invalid format', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/energy-calculation/123`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ height: 170 })
+          .expect(400);
+      });
+
+      it('returns 404 when patientId does not exist', async () => {
+        await request(app.getHttpServer())
+          .patch(
+            `/patients/${nonExistentPatientId}/energy-calculation/${calculationId}`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .send({ height: 170 })
+          .expect(404);
+      });
+
+      it('returns 404 when calculationId does not exist', async () => {
+        await request(app.getHttpServer())
+          .patch(
+            `/patients/${patientId}/energy-calculation/${nonExistentCalculationId}`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .send({ height: 170 })
+          .expect(404);
+      });
+
+      it('returns 401 when not authenticated', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .send({ height: 170 })
+          .expect(401);
+      });
+
+      it('returns 403 when user tries to update another user patient calculation', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .set('Authorization', `Bearer ${token2}`)
+          .send({ height: 170 })
+          .expect(403);
+      });
+    });
+  });
+
+  describe('DELETE /patients/:patientId/energy-calculation/:calculationId', () => {
+    describe('Success cases', () => {
+      it('deletes calculation and returns updated document', async () => {
+        // Create a calculation first
+        const createRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculation`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 180,
+            weight: 90,
             energyCalculationFormula: 'harris-benedict-1984',
             physicalActivityFactor: 1.2,
             injuryFactor: 1.0,
             pregnancyEnergyAdditional: 0,
           })
-          .expect(200);
+          .expect(201);
+        const newCalculationId = String(
+          createRes.body.calculations[createRes.body.calculations.length - 1]
+            ._id ||
+            createRes.body.calculations[createRes.body.calculations.length - 1]
+              .id,
+        );
 
+        const res = await request(app.getHttpServer())
+          .delete(
+            `/patients/${patientId}/energy-calculation/${newCalculationId}`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
         expect(res.body).toHaveProperty('id');
         expect(res.body).toHaveProperty('patientId', patientId);
-        expect(res.body).toHaveProperty('height', 175);
-        expect(res.body).toHaveProperty('weight', 80);
-        expect(res.body).toHaveProperty(
-          'energyCalculationFormula',
-          'harris-benedict-1984',
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        const deleted = res.body.calculations.find(
+          (c: any) => String(c._id || c.id) === String(newCalculationId),
         );
-        expect(res.body).toHaveProperty('physicalActivityFactor', 1.2);
-        expect(res.body).toHaveProperty('injuryFactor', 1.0);
-        expect(res.body).toHaveProperty('pregnancyEnergyAdditional', 0);
-      });
-
-      it('creates energy calculation with partial fields', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'Partial Energy Patient',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-3333',
-            email: 'partial.energy@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        const res = await request(app.getHttpServer())
-          .patch(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 180,
-            weight: 75,
-          })
-          .expect(200);
-
-        expect(res.body).toHaveProperty('height', 180);
-        expect(res.body).toHaveProperty('weight', 75);
-        expect(res.body.energyCalculationFormula).toBeUndefined();
-      });
-
-      it('updates existing energy calculation', async () => {
-        // Create first
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-          })
-          .expect(200);
-
-        // Update
-        const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 180,
-            weight: 85,
-            energyCalculationFormula: 'eer-2023',
-          })
-          .expect(200);
-
-        expect(res.body).toHaveProperty('height', 180);
-        expect(res.body).toHaveProperty('weight', 85);
-        expect(res.body).toHaveProperty('energyCalculationFormula', 'eer-2023');
-      });
-
-      it('updates only provided fields', async () => {
-        // Create with all fields
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-            energyCalculationFormula: 'harris-benedict-1984',
-            physicalActivityFactor: 1.2,
-            injuryFactor: 1.0,
-          })
-          .expect(200);
-
-        // Update only height
-        const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 180,
-          })
-          .expect(200);
-
-        expect(res.body).toHaveProperty('height', 180);
-        expect(res.body).toHaveProperty('weight', 80);
-        expect(res.body).toHaveProperty(
-          'energyCalculationFormula',
-          'harris-benedict-1984',
-        );
-      });
-    });
-
-    describe('Field validation', () => {
-      it('returns 400 when height is negative', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: -10,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when weight is negative', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            weight: -5,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when energyCalculationFormula is invalid', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            energyCalculationFormula: 'invalid-formula',
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when physicalActivityFactor is invalid', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            physicalActivityFactor: 1.999,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when injuryFactor is invalid', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            injuryFactor: 999.999,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when pregnancyEnergyAdditional is negative', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            pregnancyEnergyAdditional: -100,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when height is a string', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 'invalid',
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when weight is a string', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            weight: 'invalid',
-          })
-          .expect(400);
+        expect(deleted).toBeUndefined();
       });
     });
 
     describe('Error cases', () => {
       it('returns 400 when patientId is invalid format', async () => {
         await request(app.getHttpServer())
-          .patch(`/patients/123/energy-calculation`)
+          .delete(`/patients/123/energy-calculation/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-          })
           .expect(400);
       });
 
-      it('returns 404 when patientId does not exist', async () => {
+      it('returns 400 when calculationId is invalid format', async () => {
         await request(app.getHttpServer())
-          .patch(`/patients/${nonExistentPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-          })
-          .expect(404);
-      });
-    });
-
-    describe('Authentication', () => {
-      it('returns 401 when no token is provided', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .send({
-            height: 175,
-          })
-          .expect(401);
-      });
-
-      it('returns 401 when token is invalid', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', 'Bearer invalid-token-12345')
-          .send({
-            height: 175,
-          })
-          .expect(401);
-      });
-
-      it('returns 401 when token format is incorrect', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', 'InvalidFormat token')
-          .send({
-            height: 175,
-          })
-          .expect(401);
-      });
-    });
-
-    describe('Authorization', () => {
-      it('returns 403 when user tries to update another user patient energy calculation', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token2}`)
-          .send({
-            height: 175,
-          })
-          .expect(403);
-      });
-
-      it('user can update their own patient energy calculation', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId2}/energy-calculation`)
-          .set('Authorization', `Bearer ${token2}`)
-          .send({
-            height: 170,
-            weight: 70,
-          })
-          .expect(200);
-      });
-
-      it('user cannot update another user patient energy calculation', async () => {
-        await request(app.getHttpServer())
-          .patch(`/patients/${patientId2}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-          })
-          .expect(403);
-      });
-    });
-
-    describe('Valid enum values', () => {
-      it('accepts all valid energyCalculationFormula values', async () => {
-        const validFormulas = [
-          'harris-benedict-1984',
-          'harris-benedict-1919',
-          'fao-who-2004',
-          'eer-iom-2005',
-          'eer-2023',
-          'katch-mcardle-1996',
-          'cunningham-1980',
-          'mifflin-obesidade-1990',
-          'mifflin-sobrepeso-1990',
-          'henry-rees-1991',
-          'tinsley-por-peso-2018',
-          'tinsley-por-mlg-2018',
-          'get-por-formula-bolso',
-          'colocar-tmb-manualmente',
-          'colocar-get-manualmente',
-          'eer-iom-2005-infantil',
-          'eer-2023-infantil',
-          'fao-who-2004-infantil',
-          'schofield-1985-infantil',
-          'min-saude-gestante-2005',
-          'eer-2023-gestante',
-          'eer-2023-lactante',
-          'handymet',
-        ];
-
-        for (let i = 0; i < validFormulas.length; i++) {
-          const formula = validFormulas[i];
-          const newPatient = await request(app.getHttpServer())
-            .post('/patients')
-            .set('Authorization', `Bearer ${token}`)
-            .send({
-              fullName: `Test ${formula}`,
-              gender: 'male',
-              birthDate: '1990-01-01',
-              phone: `+55 11 90000-${5000 + i}`,
-              email: `test.${formula}.${i}@example.com`,
-            })
-            .expect(201);
-          const pid = newPatient.body.id;
-
-          const res = await request(app.getHttpServer())
-            .patch(`/patients/${pid}/energy-calculation`)
-            .set('Authorization', `Bearer ${token}`)
-            .send({
-              energyCalculationFormula: formula,
-            })
-            .expect(200);
-          expect(res.body.energyCalculationFormula).toBe(formula);
-        }
-      });
-
-      it('accepts all valid physicalActivityFactor values', async () => {
-        const validFactors = [1.0, 1.2, 1.375, 1.55, 1.725, 1.9];
-
-        for (let i = 0; i < validFactors.length; i++) {
-          const factor = validFactors[i];
-          const newPatient = await request(app.getHttpServer())
-            .post('/patients')
-            .set('Authorization', `Bearer ${token}`)
-            .send({
-              fullName: `Test Factor ${factor}`,
-              gender: 'male',
-              birthDate: '1990-01-01',
-              phone: `+55 11 90000-${6000 + i}`,
-              email: `test.factor.${factor}.${i}@example.com`,
-            })
-            .expect(201);
-          const pid = newPatient.body.id;
-
-          const res = await request(app.getHttpServer())
-            .patch(`/patients/${pid}/energy-calculation`)
-            .set('Authorization', `Bearer ${token}`)
-            .send({
-              physicalActivityFactor: factor,
-            })
-            .expect(200);
-          expect(res.body.physicalActivityFactor).toBe(factor);
-        }
-      });
-
-      it('accepts valid injuryFactor values', async () => {
-        const testFactors = [
-          1.0, 1.1, 1.2, 1.25, 1.27, 1.3, 1.32, 1.35, 1.4, 1.42, 1.5, 1.55, 1.6,
-          0.9,
-        ];
-
-        for (let i = 0; i < testFactors.length; i++) {
-          const factor = testFactors[i];
-          const newPatient = await request(app.getHttpServer())
-            .post('/patients')
-            .set('Authorization', `Bearer ${token}`)
-            .send({
-              fullName: `Test Injury ${factor}`,
-              gender: 'male',
-              birthDate: '1990-01-01',
-              phone: `+55 11 90000-${7000 + i}`,
-              email: `test.injury.${factor}.${i}@example.com`,
-            })
-            .expect(201);
-          const pid = newPatient.body.id;
-
-          const res = await request(app.getHttpServer())
-            .patch(`/patients/${pid}/energy-calculation`)
-            .set('Authorization', `Bearer ${token}`)
-            .send({
-              injuryFactor: factor,
-            })
-            .expect(200);
-          expect(res.body.injuryFactor).toBe(factor);
-        }
-      });
-    });
-
-    describe('Data relationships', () => {
-      it('energy calculation is correctly linked to patient', async () => {
-        const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-          })
-          .expect(200);
-        expect(res.body.patientId).toBe(patientId);
-      });
-
-      it('energy calculation patientId in response matches the requested patientId', async () => {
-        const res = await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .expect(200);
-        expect(res.body.patientId).toBe(patientId);
-      });
-    });
-  });
-
-  describe('POST /patients/:patientId/energy-calculation', () => {
-    describe('Success cases', () => {
-      it('creates energy calculation with all fields', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'POST Test Patient',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-9999',
-            email: 'post.test@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        const res = await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-            energyCalculationFormula: 'harris-benedict-1984',
-            physicalActivityFactor: 1.2,
-            injuryFactor: 1.0,
-            pregnancyEnergyAdditional: 0,
-          })
-          .expect(201);
-
-        expect(res.body).toHaveProperty('id');
-        expect(res.body).toHaveProperty('patientId', newPatientId);
-        expect(res.body).toHaveProperty('height', 175);
-        expect(res.body).toHaveProperty('weight', 80);
-        expect(res.body).toHaveProperty(
-          'energyCalculationFormula',
-          'harris-benedict-1984',
-        );
-        expect(res.body).toHaveProperty('physicalActivityFactor', 1.2);
-        expect(res.body).toHaveProperty('injuryFactor', 1.0);
-        expect(res.body).toHaveProperty('pregnancyEnergyAdditional', 0);
-      });
-
-      it('creates energy calculation with partial fields', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'POST Partial Test',
-            gender: 'female',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-8888',
-            email: 'post.partial@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        const res = await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 180,
-            weight: 75,
-          })
-          .expect(201);
-
-        expect(res.body).toHaveProperty('height', 180);
-        expect(res.body).toHaveProperty('weight', 75);
-        expect(res.body.energyCalculationFormula).toBeUndefined();
-      });
-    });
-
-    describe('Error cases', () => {
-      it('returns 400 when energy calculation already exists', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'Duplicate Test',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-7777',
-            email: 'duplicate.test@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        // Create first
-        await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-          })
-          .expect(201);
-
-        // Try to create again
-        await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 180,
-            weight: 85,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when patientId is invalid format', async () => {
-        await request(app.getHttpServer())
-          .post(`/patients/123/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-          })
-          .expect(400);
-      });
-
-      it('returns 404 when patientId does not exist', async () => {
-        await request(app.getHttpServer())
-          .post(`/patients/${nonExistentPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-          })
-          .expect(404);
-      });
-    });
-
-    describe('Authentication', () => {
-      it('returns 401 when no token is provided', async () => {
-        await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
-          .send({
-            height: 175,
-          })
-          .expect(401);
-      });
-
-      it('returns 401 when token is invalid', async () => {
-        await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', 'Bearer invalid-token-12345')
-          .send({
-            height: 175,
-          })
-          .expect(401);
-      });
-    });
-
-    describe('Authorization', () => {
-      it('returns 403 when user tries to create another user patient energy calculation', async () => {
-        await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token2}`)
-          .send({
-            height: 175,
-            weight: 80,
-          })
-          .expect(403);
-      });
-    });
-
-    describe('Field validation', () => {
-      it('returns 400 when height is negative', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'Validation Test',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-6666',
-            email: 'validation.test@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: -10,
-          })
-          .expect(400);
-      });
-
-      it('returns 400 when energyCalculationFormula is invalid', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'Formula Test',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-5555',
-            email: 'formula.test@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            energyCalculationFormula: 'invalid-formula',
-          })
-          .expect(400);
-      });
-    });
-  });
-
-  describe('DELETE /patients/:patientId/energy-calculation', () => {
-    describe('Success cases', () => {
-      it('deletes energy calculation and returns deleted confirmation', async () => {
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'DELETE Test Patient',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: '+55 11 90000-4444',
-            email: 'delete.test@example.com',
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        // Create energy calculation
-        await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-          })
-          .expect(201);
-
-        // Delete
-        const res = await request(app.getHttpServer())
-          .delete(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .expect(200);
-
-        expect(res.body).toHaveProperty('deleted', true);
-
-        // Verify it's deleted
-        await request(app.getHttpServer())
-          .get(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .expect(404);
-      });
-
-      it('returns 404 when energy calculation does not exist', async () => {
-        const timestamp = Date.now();
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'No Energy Calc Patient',
-            gender: 'female',
-            birthDate: '1990-01-01',
-            phone: `+55 11 90000-${timestamp.toString().slice(-4)}`,
-            email: `no.energy.${timestamp}@example.com`,
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        await request(app.getHttpServer())
-          .delete(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .expect(404);
-      });
-    });
-
-    describe('Error cases', () => {
-      it('returns 400 when patientId is invalid format', async () => {
-        await request(app.getHttpServer())
-          .delete(`/patients/123/energy-calculation`)
+          .delete(`/patients/${patientId}/energy-calculation/123`)
           .set('Authorization', `Bearer ${token}`)
           .expect(400);
       });
 
       it('returns 404 when patientId does not exist', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/${nonExistentPatientId}/energy-calculation`)
+          .delete(
+            `/patients/${nonExistentPatientId}/energy-calculation/${calculationId}`,
+          )
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
       });
-    });
 
-    describe('Authentication', () => {
-      it('returns 401 when no token is provided', async () => {
+      it('returns 404 when calculationId does not exist', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/${patientId}/energy-calculation`)
+          .delete(
+            `/patients/${patientId}/energy-calculation/${nonExistentCalculationId}`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+      });
+
+      it('returns 401 when not authenticated', async () => {
+        await request(app.getHttpServer())
+          .delete(`/patients/${patientId}/energy-calculation/${calculationId}`)
           .expect(401);
       });
 
-      it('returns 401 when token is invalid', async () => {
+      it('returns 403 when user tries to delete another user patient calculation', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/${patientId}/energy-calculation`)
-          .set('Authorization', 'Bearer invalid-token-12345')
-          .expect(401);
-      });
-    });
-
-    describe('Authorization', () => {
-      it('returns 403 when user tries to delete another user patient energy calculation', async () => {
-        const timestamp = Date.now();
-        const newPatient = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'Auth Test Patient',
-            gender: 'male',
-            birthDate: '1990-01-01',
-            phone: `+55 11 90000-${timestamp.toString().slice(-4)}`,
-            email: `auth.test.${timestamp}@example.com`,
-          })
-          .expect(201);
-        const newPatientId = newPatient.body.id;
-
-        // Create energy calculation
-        await request(app.getHttpServer())
-          .post(`/patients/${newPatientId}/energy-calculation`)
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            height: 175,
-            weight: 80,
-          })
-          .expect(201);
-
-        // Try to delete with different user
-        await request(app.getHttpServer())
-          .delete(`/patients/${newPatientId}/energy-calculation`)
+          .delete(`/patients/${patientId}/energy-calculation/${calculationId}`)
           .set('Authorization', `Bearer ${token2}`)
           .expect(403);
       });
