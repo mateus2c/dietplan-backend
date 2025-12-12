@@ -18,7 +18,12 @@ export class AnamnesisService {
     private readonly patientModel: Model<PatientDocument>,
   ) {}
 
-  async getByPatientId(patientId: string, userId: string) {
+  async getByPatientId(
+    patientId: string,
+    userId: string,
+    page?: number,
+    pageSize?: number,
+  ) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
     }
@@ -35,10 +40,35 @@ export class AnamnesisService {
     if (!doc) {
       throw new NotFoundException('Anamnesis not found for patient');
     }
+
+    const allItems = doc.items || [];
+
+    if (page !== undefined && pageSize !== undefined) {
+      const p =
+        Number.isFinite(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+      const size =
+        Number.isFinite(Number(pageSize)) && Number(pageSize) > 0
+          ? Number(pageSize)
+          : 10;
+      const skip = (p - 1) * size;
+      const total = allItems.length;
+      const paginatedItems = allItems.slice(skip, skip + size);
+
+      return {
+        id: doc._id.toString(),
+        patientId: doc.patient.toString(),
+        page: p,
+        pageSize: size,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / size)),
+        items: paginatedItems,
+      };
+    }
+
     return {
       id: doc._id.toString(),
       patientId: doc.patient.toString(),
-      items: doc.items,
+      items: allItems,
     };
   }
 

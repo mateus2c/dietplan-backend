@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -18,12 +19,14 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AnamnesisService } from './anamnesis.service';
 import { CreateAnamnesisDto } from './dto/create-anamnesis.dto';
 import { UpdateAnamnesisDto } from './dto/update-anamnesis.dto';
+import { ListAnamnesisQueryDto } from './dto/list-anamnesis.query.dto';
 
 @ApiTags('patients/anamnesis')
 @Controller()
@@ -121,16 +124,38 @@ export class AnamnesisController {
   @ApiBearerAuth()
   @Get()
   @ApiOperation({
-    summary: 'Get anamnesis',
-    description: 'Fetches all anamnesis items for the given patient.',
+    summary: 'Get anamnesis (paginated)',
+    description:
+      'Fetches anamnesis items for the given patient. Supports pagination via query parameters.',
   })
   @ApiParam({ name: 'patientId', required: true })
-  @ApiOkResponse({ description: 'Returns anamneses document' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    schema: { type: 'integer', minimum: 1 },
+    description: 'Current page (default: returns all items if not specified)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    schema: { type: 'integer', minimum: 1 },
+    description: 'Items per page (default: 10 if page is specified)',
+  })
+  @ApiOkResponse({
+    description: 'Returns anamnesis document with paginated items',
+  })
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async getByPatient(
     @Param('patientId') patientId: string,
+    @Query() query: ListAnamnesisQueryDto,
     @Req() req: { user: { userId: string } },
   ) {
-    return this.service.getByPatientId(patientId, req.user.userId);
+    return this.service.getByPatientId(
+      patientId,
+      req.user.userId,
+      query.page,
+      query.pageSize,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

@@ -361,7 +361,7 @@ describe('Anamnesis (e2e)', () => {
 
   describe('GET /patients/:patientId/anamnesis', () => {
     describe('Success cases', () => {
-      it('returns document with items', async () => {
+      it('returns document with items (without pagination)', async () => {
         const res = await request(app.getHttpServer())
           .get(`/patients/${patientId}/anamnesis`)
           .set('Authorization', `Bearer ${token}`)
@@ -370,6 +370,159 @@ describe('Anamnesis (e2e)', () => {
         expect(res.body).toHaveProperty('patientId', patientId);
         expect(Array.isArray(res.body.items)).toBe(true);
         expect(res.body.items.length).toBeGreaterThanOrEqual(1);
+        expect(res.body).not.toHaveProperty('page');
+        expect(res.body).not.toHaveProperty('pageSize');
+        expect(res.body).not.toHaveProperty('total');
+        expect(res.body).not.toHaveProperty('totalPages');
+      });
+
+      it('returns paginated items when page and pageSize are provided', async () => {
+        // Create multiple items first
+        for (let i = 0; i < 5; i++) {
+          await request(app.getHttpServer())
+            .post(`/patients/${patientId}/anamnesis`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+              title: `Test Item ${i}`,
+              description: `Description ${i}`,
+            })
+            .expect(201);
+        }
+
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=1&pageSize=3`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(res.body).toHaveProperty('page', 1);
+        expect(res.body).toHaveProperty('pageSize', 3);
+        expect(res.body).toHaveProperty('total');
+        expect(res.body).toHaveProperty('totalPages');
+        expect(Array.isArray(res.body.items)).toBe(true);
+        expect(res.body.items.length).toBeLessThanOrEqual(3);
+        expect(res.body.total).toBeGreaterThanOrEqual(6); // At least 1 initial + 5 new
+      });
+
+      it('returns correct pagination metadata', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=1&pageSize=5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.page).toBe(1);
+        expect(res.body.pageSize).toBe(5);
+        expect(res.body.total).toBeGreaterThanOrEqual(0);
+        expect(res.body.totalPages).toBeGreaterThanOrEqual(1);
+        expect(res.body.items.length).toBeLessThanOrEqual(5);
+        expect(res.body.totalPages).toBe(
+          Math.max(1, Math.ceil(res.body.total / res.body.pageSize)),
+        );
+      });
+
+      it('returns second page correctly', async () => {
+        const page1Res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=1&pageSize=3`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        if (page1Res.body.total > 3) {
+          const page2Res = await request(app.getHttpServer())
+            .get(`/patients/${patientId}/anamnesis?page=2&pageSize=3`)
+            .set('Authorization', `Bearer ${token}`)
+            .expect(200);
+
+          expect(page2Res.body.page).toBe(2);
+          expect(page2Res.body.pageSize).toBe(3);
+          expect(page2Res.body.total).toBe(page1Res.body.total);
+          expect(page2Res.body.items.length).toBeGreaterThan(0);
+          expect(page2Res.body.items.length).toBeLessThanOrEqual(3);
+
+          // Verify items are different
+          const page1Ids = page1Res.body.items.map((item: any) =>
+            String(item._id || item.id),
+          );
+          const page2Ids = page2Res.body.items.map((item: any) =>
+            String(item._id || item.id),
+          );
+          const intersection = page1Ids.filter((id: string) =>
+            page2Ids.includes(id),
+          );
+          expect(intersection.length).toBe(0);
+        }
+      });
+
+      it('returns empty items array when page exceeds total pages', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=999&pageSize=10`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.page).toBe(999);
+        expect(res.body.pageSize).toBe(10);
+        expect(res.body.total).toBeGreaterThanOrEqual(0);
+        expect(res.body.totalPages).toBeGreaterThanOrEqual(1);
+        expect(Array.isArray(res.body.items)).toBe(true);
+        expect(res.body.items.length).toBe(0);
+      });
+    });
+
+    describe('Query parameters validation', () => {
+      it('returns 400 when page is negative', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=-1`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is zero', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=0`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is a float', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=1.5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is not a number', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?page=abc`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is negative', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?pageSize=-1`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is zero', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?pageSize=0`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is a float', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?pageSize=5.5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is not a number', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/anamnesis?pageSize=abc`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
       });
     });
 
