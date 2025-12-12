@@ -9,7 +9,7 @@ import { AuthModule } from '../src/auth/auth.module';
 import { PatientsModule } from '../src/patients/patients.module';
 import { MealPlansModule } from '../src/patients/meal-plans/meal-plans.module';
 import { AnamnesisModule } from '../src/patients/anamnesis/anamnesis.module';
-import { EnergyCalculationModule } from '../src/patients/energy-calculation/energy-calculation.module';
+import { EnergyCalculationModule } from '../src/patients/energy-calculations/energy-calculations.module';
 import { GoogleStrategy } from '../src/auth/strategies/google.strategy';
 
 describe('Patients (e2e)', () => {
@@ -40,7 +40,7 @@ describe('Patients (e2e)', () => {
               { path: ':patientId/meal-plans', module: MealPlansModule },
               { path: ':patientId/anamnesis', module: AnamnesisModule },
               {
-                path: ':patientId/energy-calculation',
+                path: ':patientId/energy-calculations',
                 module: EnergyCalculationModule,
               },
             ],
@@ -1298,7 +1298,7 @@ describe('Patients (e2e)', () => {
     });
 
     describe('Cascade deletion (5.2)', () => {
-      it('deletes meal-plans, anamnesis and energy-calculation when patient is deleted', async () => {
+      it('deletes meal-plans, anamnesis and energy-calculations when patient is deleted', async () => {
         const created = await request(app.getHttpServer())
           .post('/patients')
           .set('Authorization', `Bearer ${token}`)
@@ -1332,7 +1332,7 @@ describe('Patients (e2e)', () => {
           .send({ title: 'Inicial', description: 'Desc' })
           .expect(201);
         await request(app.getHttpServer())
-          .post(`/patients/${pid}/energy-calculation`)
+          .post(`/patients/${pid}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 175,
@@ -1355,7 +1355,7 @@ describe('Patients (e2e)', () => {
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
         await request(app.getHttpServer())
-          .get(`/patients/${pid}/energy-calculation`)
+          .get(`/patients/${pid}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
       });

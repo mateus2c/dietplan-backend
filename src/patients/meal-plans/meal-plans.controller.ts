@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -16,6 +17,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiBody,
   ApiCreatedResponse,
@@ -24,6 +26,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MealPlansService } from './meal-plans.service';
 import { DietPlanDto } from './dto/upsert-meal-plans.dto';
 import { UpdateDietPlanDto } from './dto/update-diet-plan.dto';
+import { ListMealPlansQueryDto } from './dto/list-meal-plans.query.dto';
 
 @ApiTags('patients/meal-plans')
 @Controller()
@@ -132,16 +135,38 @@ export class MealPlansController {
   @ApiBearerAuth()
   @Get()
   @ApiOperation({
-    summary: 'Get meal plans',
-    description: 'Fetches all diet plans for the given patient.',
+    summary: 'Get meal plans (paginated)',
+    description:
+      'Fetches diet plans for the given patient. Supports pagination via query parameters.',
   })
   @ApiParam({ name: 'patientId', required: true })
-  @ApiOkResponse({ description: 'Returns meal plans document' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    schema: { type: 'integer', minimum: 1 },
+    description: 'Current page (default: returns all plans if not specified)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    schema: { type: 'integer', minimum: 1 },
+    description: 'Items per page (default: 10 if page is specified)',
+  })
+  @ApiOkResponse({
+    description: 'Returns meal plans document with paginated plans',
+  })
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async getByPatient(
     @Param('patientId') patientId: string,
+    @Query() query: ListMealPlansQueryDto,
     @Req() req: { user: { userId: string } },
   ) {
-    return this.service.getByPatientId(patientId, req.user.userId);
+    return this.service.getByPatientId(
+      patientId,
+      req.user.userId,
+      query.page,
+      query.pageSize,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

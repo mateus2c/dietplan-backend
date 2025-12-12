@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -18,14 +19,16 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { EnergyCalculationService } from './energy-calculation.service';
+import { EnergyCalculationService } from './energy-calculations.service';
 import { UpdateEnergyCalculationDto } from './dto/update-energy-calculation.dto';
 import { CreateEnergyCalculationDto } from './dto/create-energy-calculation.dto';
+import { ListEnergyCalculationsQueryDto } from './dto/list-energy-calculations.query.dto';
 
-@ApiTags('patients/energy-calculation')
+@ApiTags('patients/energy-calculations')
 @Controller()
 export class EnergyCalculationController {
   constructor(private readonly service: EnergyCalculationService) {}
@@ -131,17 +134,39 @@ export class EnergyCalculationController {
   @ApiBearerAuth()
   @Get()
   @ApiOperation({
-    summary: 'Get energy calculations',
+    summary: 'Get energy calculations (paginated)',
     description:
-      'Fetches all energy calculation entries for the given patient.',
+      'Fetches energy calculation entries for the given patient. Always returns paginated results (default: page=1, pageSize=10).',
   })
   @ApiParam({ name: 'patientId', required: true })
-  @ApiOkResponse({ description: 'Returns energy calculations document' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    schema: { type: 'integer', minimum: 1, default: 1 },
+    description: 'Current page (default: 1)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    schema: { type: 'integer', minimum: 1, default: 10 },
+    description: 'Items per page (default: 10)',
+  })
+  @ApiOkResponse({
+    description:
+      'Returns energy calculations document with paginated calculations',
+  })
+  @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   async getByPatient(
     @Param('patientId') patientId: string,
+    @Query() query: ListEnergyCalculationsQueryDto,
     @Req() req: { user: { userId: string } },
   ) {
-    return this.service.getByPatientId(patientId, req.user.userId);
+    return this.service.getByPatientId(
+      patientId,
+      req.user.userId,
+      query.page,
+      query.pageSize,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

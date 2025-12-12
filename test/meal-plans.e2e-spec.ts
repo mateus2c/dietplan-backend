@@ -198,6 +198,229 @@ describe('Meal Plans (e2e)', () => {
     });
   });
 
+  describe('GET /patients/:patientId/meal-plans', () => {
+    describe('Success cases', () => {
+      it('returns document with plans (without pagination)', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(Array.isArray(res.body.plans)).toBe(true);
+        expect(res.body.plans.length).toBeGreaterThanOrEqual(1);
+        expect(res.body).not.toHaveProperty('page');
+        expect(res.body).not.toHaveProperty('pageSize');
+        expect(res.body).not.toHaveProperty('total');
+        expect(res.body).not.toHaveProperty('totalPages');
+      });
+
+      it('returns paginated plans when page and pageSize are provided', async () => {
+        // Create multiple plans first
+        for (let i = 0; i < 5; i++) {
+          await request(app.getHttpServer())
+            .post(`/patients/${patientId}/meal-plans`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+              title: `Test Plan ${i}`,
+              meals: [
+                {
+                  name: 'Breakfast',
+                  time: '08:00',
+                  items: [{ foodId: 'oats', quantityGrams: 60 }],
+                },
+              ],
+            })
+            .expect(201);
+        }
+
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=1&pageSize=3`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(res.body).toHaveProperty('page', 1);
+        expect(res.body).toHaveProperty('pageSize', 3);
+        expect(res.body).toHaveProperty('total');
+        expect(res.body).toHaveProperty('totalPages');
+        expect(Array.isArray(res.body.plans)).toBe(true);
+        expect(res.body.plans.length).toBeLessThanOrEqual(3);
+        expect(res.body.total).toBeGreaterThanOrEqual(6); // At least 1 initial + 5 new
+      });
+
+      it('returns correct pagination metadata', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=1&pageSize=5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.page).toBe(1);
+        expect(res.body.pageSize).toBe(5);
+        expect(res.body.total).toBeGreaterThanOrEqual(0);
+        expect(res.body.totalPages).toBeGreaterThanOrEqual(1);
+        expect(res.body.plans.length).toBeLessThanOrEqual(5);
+        expect(res.body.totalPages).toBe(
+          Math.max(1, Math.ceil(res.body.total / res.body.pageSize)),
+        );
+      });
+
+      it('returns second page correctly', async () => {
+        const page1Res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=1&pageSize=3`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        if (page1Res.body.total > 3) {
+          const page2Res = await request(app.getHttpServer())
+            .get(`/patients/${patientId}/meal-plans?page=2&pageSize=3`)
+            .set('Authorization', `Bearer ${token}`)
+            .expect(200);
+
+          expect(page2Res.body.page).toBe(2);
+          expect(page2Res.body.pageSize).toBe(3);
+          expect(page2Res.body.total).toBe(page1Res.body.total);
+          expect(page2Res.body.plans.length).toBeGreaterThan(0);
+          expect(page2Res.body.plans.length).toBeLessThanOrEqual(3);
+
+          // Verify plans are different
+          const page1Ids = page1Res.body.plans.map((plan: any) =>
+            String(plan._id || plan.id),
+          );
+          const page2Ids = page2Res.body.plans.map((plan: any) =>
+            String(plan._id || plan.id),
+          );
+          const intersection = page1Ids.filter((id: string) =>
+            page2Ids.includes(id),
+          );
+          expect(intersection.length).toBe(0);
+        }
+      });
+
+      it('returns empty plans array when page exceeds total pages', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=999&pageSize=10`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.page).toBe(999);
+        expect(res.body.pageSize).toBe(10);
+        expect(res.body.total).toBeGreaterThanOrEqual(0);
+        expect(res.body.totalPages).toBeGreaterThanOrEqual(1);
+        expect(Array.isArray(res.body.plans)).toBe(true);
+        expect(res.body.plans.length).toBe(0);
+      });
+    });
+
+    describe('Query parameters validation', () => {
+      it('returns 400 when page is negative', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=-1`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is zero', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=0`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is a float', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=1.5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is not a number', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?page=abc`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is negative', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?pageSize=-1`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is zero', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?pageSize=0`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is a float', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?pageSize=5.5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is not a number', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans?pageSize=abc`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+    });
+
+    describe('Error cases', () => {
+      it('returns 400 when patientId is invalid format', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/123/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 404 when patientId does not exist', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${nonExistentPatientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+      });
+
+      it('returns 404 when meal plans document does not exist for patient', async () => {
+        // Create a new patient without meal plans
+        const newPatient = await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'New Patient',
+            gender: 'male',
+            birthDate: '1995-01-01',
+            phone: '+55 11 90000-9999',
+            email: 'new.patient@example.com',
+          })
+          .expect(201);
+
+        await request(app.getHttpServer())
+          .get(`/patients/${newPatient.body.id}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(404);
+      });
+
+      it('returns 401 when no token is provided', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans`)
+          .expect(401);
+      });
+
+      it('returns 403 when user tries to access another user patient meal plans', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token2}`)
+          .expect(403);
+      });
+    });
+  });
+
   describe('PATCH /patients/:patientId/meal-plans/:planId', () => {
     describe('Field validation', () => {
       it('returns 400 when foodId is invalid enum value', async () => {

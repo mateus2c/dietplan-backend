@@ -46,7 +46,7 @@ async function bootstrap() {
     .addTag('patients')
     .addTag('patients/meal-plans', 'Meal plans for patients')
     .addTag('patients/anamnesis', 'Anamnesis for patients')
-    .addTag('patients/energy-calculation', 'Energy calculation for patients')
+    .addTag('patients/energy-calculations', 'Energy calculations for patients')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -61,7 +61,7 @@ async function bootstrap() {
           'patients',
           'patients/meal-plans',
           'patients/anamnesis',
-          'patients/energy-calculation',
+          'patients/energy-calculations',
         ];
         const indexA = order.indexOf(a);
         const indexB = order.indexOf(b);

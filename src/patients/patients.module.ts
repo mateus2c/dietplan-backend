@@ -15,7 +15,7 @@ import {
 import {
   EnergyCalculation,
   EnergyCalculationSchema,
-} from './energy-calculation/schemas/energy-calculation.schema';
+} from './energy-calculations/schemas/energy-calculations.schema';
 
 @Module({
   imports: [

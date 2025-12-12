@@ -9,7 +9,7 @@ import { Model, isValidObjectId, Types } from 'mongoose';
 import {
   EnergyCalculation,
   EnergyCalculationDocument,
-} from './schemas/energy-calculation.schema';
+} from './schemas/energy-calculations.schema';
 import { Patient, PatientDocument } from '../schemas/patient.schema';
 import { UpdateEnergyCalculationDto } from './dto/update-energy-calculation.dto';
 import { CreateEnergyCalculationDto } from './dto/create-energy-calculation.dto';
@@ -23,7 +23,12 @@ export class EnergyCalculationService {
     private readonly patientModel: Model<PatientDocument>,
   ) {}
 
-  async getByPatientId(patientId: string, userId: string) {
+  async getByPatientId(
+    patientId: string,
+    userId: string,
+    page?: number,
+    pageSize?: number,
+  ) {
     if (!isValidObjectId(patientId)) {
       throw new BadRequestException('Invalid patient id');
     }
@@ -40,10 +45,31 @@ export class EnergyCalculationService {
     if (!doc) {
       throw new NotFoundException('Energy calculation not found for patient');
     }
+
+    const allCalculations = doc.calculations || [];
+
+    const p =
+      page !== undefined && Number.isFinite(Number(page)) && Number(page) > 0
+        ? Number(page)
+        : 1;
+    const size =
+      pageSize !== undefined &&
+      Number.isFinite(Number(pageSize)) &&
+      Number(pageSize) > 0
+        ? Number(pageSize)
+        : 10;
+    const skip = (p - 1) * size;
+    const total = allCalculations.length;
+    const paginatedCalculations = allCalculations.slice(skip, skip + size);
+
     return {
       id: doc._id.toString(),
       patientId: doc.patient.toString(),
-      calculations: doc.calculations,
+      page: p,
+      pageSize: size,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / size)),
+      calculations: paginatedCalculations,
     };
   }
 

@@ -20,7 +20,7 @@ import {
 import {
   EnergyCalculation,
   EnergyCalculationDocument,
-} from './energy-calculation/schemas/energy-calculation.schema';
+} from './energy-calculations/schemas/energy-calculations.schema';
 
 @Injectable()
 export class PatientsService {

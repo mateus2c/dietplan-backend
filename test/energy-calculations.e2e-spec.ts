@@ -6,9 +6,12 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { UsersModule } from '../src/users/users.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { PatientsModule } from '../src/patients/patients.module';
-import { EnergyCalculationModule } from '../src/patients/energy-calculation/energy-calculation.module';
+import { EnergyCalculationModule } from '../src/patients/energy-calculations/energy-calculations.module';
 import { RouterModule } from '@nestjs/core';
 import { GoogleStrategy } from '../src/auth/strategies/google.strategy';
+import { EnergyCalculationFormula } from '../src/patients/energy-calculations/enums/energy-calculation-formula.enum';
+import { PhysicalActivityFactor } from '../src/patients/energy-calculations/enums/physical-activity-factor.enum';
+import { InjuryFactor } from '../src/patients/energy-calculations/enums/injury-factor.enum';
 
 describe('Energy Calculation (e2e)', () => {
   let app: INestApplication;
@@ -36,7 +39,7 @@ describe('Energy Calculation (e2e)', () => {
             module: PatientsModule,
             children: [
               {
-                path: ':patientId/energy-calculation',
+                path: ':patientId/energy-calculations',
                 module: EnergyCalculationModule,
               },
             ],
@@ -87,7 +90,7 @@ describe('Energy Calculation (e2e)', () => {
 
     // Create energy calculation for the first patient
     const res = await request(app.getHttpServer())
-      .post(`/patients/${patientId}/energy-calculation`)
+      .post(`/patients/${patientId}/energy-calculations`)
       .set('Authorization', `Bearer ${token}`)
       .send({
         height: 165,
@@ -112,11 +115,11 @@ describe('Energy Calculation (e2e)', () => {
     await mongod.stop();
   });
 
-  describe('POST /patients/:patientId/energy-calculation', () => {
+  describe('POST /patients/:patientId/energy-calculations', () => {
     describe('Success cases', () => {
       it('creates calculation and returns document with all calculations', async () => {
         const res = await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 170,
@@ -135,7 +138,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns complete structure with all required fields', async () => {
         const res = await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 175,
@@ -159,7 +162,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('created calculation corresponds to the correct patient', async () => {
         const res = await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 160,
@@ -181,7 +184,7 @@ describe('Energy Calculation (e2e)', () => {
     describe('Error cases', () => {
       it('returns 400 when patientId is invalid format', async () => {
         await request(app.getHttpServer())
-          .post(`/patients/123/energy-calculation`)
+          .post(`/patients/123/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 170,
@@ -196,7 +199,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 404 when patientId does not exist', async () => {
         await request(app.getHttpServer())
-          .post(`/patients/${nonExistentPatientId}/energy-calculation`)
+          .post(`/patients/${nonExistentPatientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 170,
@@ -211,7 +214,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 400 when energyCalculationFormula is invalid', async () => {
         await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 170,
@@ -226,7 +229,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 401 when not authenticated', async () => {
         await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .send({
             height: 170,
             weight: 70,
@@ -240,7 +243,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 403 when user tries to create another user patient calculation', async () => {
         await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token2}`)
           .send({
             height: 170,
@@ -255,31 +258,191 @@ describe('Energy Calculation (e2e)', () => {
     });
   });
 
-  describe('GET /patients/:patientId/energy-calculation', () => {
+  describe('GET /patients/:patientId/energy-calculations', () => {
     describe('Success cases', () => {
-      it('returns document with calculations', async () => {
+      it('returns document with calculations (paginated by default)', async () => {
         const res = await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
+          .get(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .expect(200);
         expect(res.body).toHaveProperty('id');
         expect(res.body).toHaveProperty('patientId', patientId);
         expect(Array.isArray(res.body.calculations)).toBe(true);
         expect(res.body.calculations.length).toBeGreaterThanOrEqual(1);
+        expect(res.body).toHaveProperty('page', 1);
+        expect(res.body).toHaveProperty('pageSize', 10);
+        expect(res.body).toHaveProperty('total');
+        expect(res.body).toHaveProperty('totalPages');
+      });
+
+      it('returns paginated calculations when page and pageSize are provided', async () => {
+        // Create multiple calculations first
+        for (let i = 0; i < 5; i++) {
+          await request(app.getHttpServer())
+            .post(`/patients/${patientId}/energy-calculations`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+              height: 170 + i,
+              weight: 70 + i,
+              energyCalculationFormula:
+                EnergyCalculationFormula.HARRIS_BENEDICT_1984,
+              physicalActivityFactor: PhysicalActivityFactor.SEDENTARIO,
+              injuryFactor: InjuryFactor.NAO_UTILIZAR,
+              pregnancyEnergyAdditional: 0,
+            })
+            .expect(201);
+        }
+
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=1&pageSize=3`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(res.body).toHaveProperty('page', 1);
+        expect(res.body).toHaveProperty('pageSize', 3);
+        expect(res.body).toHaveProperty('total');
+        expect(res.body).toHaveProperty('totalPages');
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        expect(res.body.calculations.length).toBeLessThanOrEqual(3);
+        expect(res.body.total).toBeGreaterThanOrEqual(6); // At least 1 initial + 5 new
+      });
+
+      it('returns correct pagination metadata', async () => {
+        const res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=1&pageSize=5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.page).toBe(1);
+        expect(res.body.pageSize).toBe(5);
+        expect(res.body.total).toBeGreaterThanOrEqual(0);
+        expect(res.body.totalPages).toBeGreaterThanOrEqual(1);
+        expect(res.body.calculations.length).toBeLessThanOrEqual(5);
+        expect(res.body.totalPages).toBe(
+          Math.max(1, Math.ceil(res.body.total / res.body.pageSize)),
+        );
+      });
+
+      it('returns second page correctly', async () => {
+        const page1Res = await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=1&pageSize=3`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        if (page1Res.body.total > 3) {
+          const page2Res = await request(app.getHttpServer())
+            .get(`/patients/${patientId}/energy-calculations?page=2&pageSize=3`)
+            .set('Authorization', `Bearer ${token}`)
+            .expect(200);
+
+          expect(page2Res.body.page).toBe(2);
+          expect(page2Res.body.pageSize).toBe(3);
+          expect(page2Res.body.total).toBe(page1Res.body.total);
+          expect(page2Res.body.calculations.length).toBeGreaterThan(0);
+          expect(page2Res.body.calculations.length).toBeLessThanOrEqual(3);
+
+          // Verify calculations are different
+          const page1Ids = page1Res.body.calculations.map((calc: any) =>
+            String(calc._id || calc.id),
+          );
+          const page2Ids = page2Res.body.calculations.map((calc: any) =>
+            String(calc._id || calc.id),
+          );
+          const intersection = page1Ids.filter((id: string) =>
+            page2Ids.includes(id),
+          );
+          expect(intersection.length).toBe(0);
+        }
+      });
+
+      it('returns empty calculations array when page exceeds total pages', async () => {
+        const res = await request(app.getHttpServer())
+          .get(
+            `/patients/${patientId}/energy-calculations?page=999&pageSize=10`,
+          )
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+
+        expect(res.body.page).toBe(999);
+        expect(res.body.pageSize).toBe(10);
+        expect(res.body.total).toBeGreaterThanOrEqual(0);
+        expect(res.body.totalPages).toBeGreaterThanOrEqual(1);
+        expect(Array.isArray(res.body.calculations)).toBe(true);
+        expect(res.body.calculations.length).toBe(0);
+      });
+    });
+
+    describe('Query parameters validation', () => {
+      it('returns 400 when page is negative', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=-1`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is zero', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=0`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is a float', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=1.5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when page is not a number', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?page=abc`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is negative', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?pageSize=-1`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is zero', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?pageSize=0`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is a float', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?pageSize=5.5`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      });
+
+      it('returns 400 when pageSize is not a number', async () => {
+        await request(app.getHttpServer())
+          .get(`/patients/${patientId}/energy-calculations?pageSize=abc`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
       });
     });
 
     describe('Error cases', () => {
       it('returns 400 when patientId is invalid format', async () => {
         await request(app.getHttpServer())
-          .get(`/patients/123/energy-calculation`)
+          .get(`/patients/123/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .expect(400);
       });
 
       it('returns 404 when patientId does not exist', async () => {
         await request(app.getHttpServer())
-          .get(`/patients/${nonExistentPatientId}/energy-calculation`)
+          .get(`/patients/${nonExistentPatientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
       });
@@ -299,31 +462,31 @@ describe('Energy Calculation (e2e)', () => {
           .expect(201);
 
         await request(app.getHttpServer())
-          .get(`/patients/${newPatient.body.id}/energy-calculation`)
+          .get(`/patients/${newPatient.body.id}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
       });
 
       it('returns 401 when not authenticated', async () => {
         await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
+          .get(`/patients/${patientId}/energy-calculations`)
           .expect(401);
       });
 
       it('returns 403 when user tries to access another user patient calculation', async () => {
         await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
+          .get(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token2}`)
           .expect(403);
       });
     });
   });
 
-  describe('PATCH /patients/:patientId/energy-calculation/:calculationId', () => {
+  describe('PATCH /patients/:patientId/energy-calculations/:calculationId', () => {
     describe('Success cases', () => {
       it('updates only the height', async () => {
         const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .patch(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({ height: 170 })
           .expect(200);
@@ -337,7 +500,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('updates only the weight', async () => {
         const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .patch(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({ weight: 72 })
           .expect(200);
@@ -351,7 +514,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('updates multiple fields simultaneously', async () => {
         const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .patch(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 175,
@@ -373,7 +536,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns current state when no changes are made', async () => {
         const beforeRes = await request(app.getHttpServer())
-          .get(`/patients/${patientId}/energy-calculation`)
+          .get(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .expect(200);
         const currentCalculation = beforeRes.body.calculations.find(
@@ -381,7 +544,7 @@ describe('Energy Calculation (e2e)', () => {
         );
 
         const res = await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .patch(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: currentCalculation.height,
@@ -400,7 +563,7 @@ describe('Energy Calculation (e2e)', () => {
     describe('Error cases', () => {
       it('returns 400 when patientId is invalid format', async () => {
         await request(app.getHttpServer())
-          .patch(`/patients/123/energy-calculation/${calculationId}`)
+          .patch(`/patients/123/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({ height: 170 })
           .expect(400);
@@ -408,7 +571,7 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 400 when calculationId is invalid format', async () => {
         await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/123`)
+          .patch(`/patients/${patientId}/energy-calculations/123`)
           .set('Authorization', `Bearer ${token}`)
           .send({ height: 170 })
           .expect(400);
@@ -417,7 +580,7 @@ describe('Energy Calculation (e2e)', () => {
       it('returns 404 when patientId does not exist', async () => {
         await request(app.getHttpServer())
           .patch(
-            `/patients/${nonExistentPatientId}/energy-calculation/${calculationId}`,
+            `/patients/${nonExistentPatientId}/energy-calculations/${calculationId}`,
           )
           .set('Authorization', `Bearer ${token}`)
           .send({ height: 170 })
@@ -427,7 +590,7 @@ describe('Energy Calculation (e2e)', () => {
       it('returns 404 when calculationId does not exist', async () => {
         await request(app.getHttpServer())
           .patch(
-            `/patients/${patientId}/energy-calculation/${nonExistentCalculationId}`,
+            `/patients/${patientId}/energy-calculations/${nonExistentCalculationId}`,
           )
           .set('Authorization', `Bearer ${token}`)
           .send({ height: 170 })
@@ -436,14 +599,14 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 401 when not authenticated', async () => {
         await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .patch(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .send({ height: 170 })
           .expect(401);
       });
 
       it('returns 403 when user tries to update another user patient calculation', async () => {
         await request(app.getHttpServer())
-          .patch(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .patch(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token2}`)
           .send({ height: 170 })
           .expect(403);
@@ -451,12 +614,12 @@ describe('Energy Calculation (e2e)', () => {
     });
   });
 
-  describe('DELETE /patients/:patientId/energy-calculation/:calculationId', () => {
+  describe('DELETE /patients/:patientId/energy-calculations/:calculationId', () => {
     describe('Success cases', () => {
       it('deletes calculation and returns updated document', async () => {
         // Create a calculation first
         const createRes = await request(app.getHttpServer())
-          .post(`/patients/${patientId}/energy-calculation`)
+          .post(`/patients/${patientId}/energy-calculations`)
           .set('Authorization', `Bearer ${token}`)
           .send({
             height: 180,
@@ -476,7 +639,7 @@ describe('Energy Calculation (e2e)', () => {
 
         const res = await request(app.getHttpServer())
           .delete(
-            `/patients/${patientId}/energy-calculation/${newCalculationId}`,
+            `/patients/${patientId}/energy-calculations/${newCalculationId}`,
           )
           .set('Authorization', `Bearer ${token}`)
           .expect(200);
@@ -493,14 +656,14 @@ describe('Energy Calculation (e2e)', () => {
     describe('Error cases', () => {
       it('returns 400 when patientId is invalid format', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/123/energy-calculation/${calculationId}`)
+          .delete(`/patients/123/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token}`)
           .expect(400);
       });
 
       it('returns 400 when calculationId is invalid format', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/${patientId}/energy-calculation/123`)
+          .delete(`/patients/${patientId}/energy-calculations/123`)
           .set('Authorization', `Bearer ${token}`)
           .expect(400);
       });
@@ -508,7 +671,7 @@ describe('Energy Calculation (e2e)', () => {
       it('returns 404 when patientId does not exist', async () => {
         await request(app.getHttpServer())
           .delete(
-            `/patients/${nonExistentPatientId}/energy-calculation/${calculationId}`,
+            `/patients/${nonExistentPatientId}/energy-calculations/${calculationId}`,
           )
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
@@ -517,7 +680,7 @@ describe('Energy Calculation (e2e)', () => {
       it('returns 404 when calculationId does not exist', async () => {
         await request(app.getHttpServer())
           .delete(
-            `/patients/${patientId}/energy-calculation/${nonExistentCalculationId}`,
+            `/patients/${patientId}/energy-calculations/${nonExistentCalculationId}`,
           )
           .set('Authorization', `Bearer ${token}`)
           .expect(404);
@@ -525,13 +688,13 @@ describe('Energy Calculation (e2e)', () => {
 
       it('returns 401 when not authenticated', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .delete(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .expect(401);
       });
 
       it('returns 403 when user tries to delete another user patient calculation', async () => {
         await request(app.getHttpServer())
-          .delete(`/patients/${patientId}/energy-calculation/${calculationId}`)
+          .delete(`/patients/${patientId}/energy-calculations/${calculationId}`)
           .set('Authorization', `Bearer ${token2}`)
           .expect(403);
       });

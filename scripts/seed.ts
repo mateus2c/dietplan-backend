@@ -8,10 +8,10 @@ import { Anamnesis, AnamnesisSchema } from '../src/patients/anamnesis/schemas/an
 import {
   EnergyCalculation,
   EnergyCalculationSchema,
-} from '../src/patients/energy-calculation/schemas/energy-calculation.schema'
-import { EnergyCalculationFormula } from '../src/patients/energy-calculation/enums/energy-calculation-formula.enum'
-import { PhysicalActivityFactor } from '../src/patients/energy-calculation/enums/physical-activity-factor.enum'
-import { InjuryFactor } from '../src/patients/energy-calculation/enums/injury-factor.enum'
+} from '../src/patients/energy-calculations/schemas/energy-calculations.schema'
+import { EnergyCalculationFormula } from '../src/patients/energy-calculations/enums/energy-calculation-formula.enum'
+import { PhysicalActivityFactor } from '../src/patients/energy-calculations/enums/physical-activity-factor.enum'
+import { InjuryFactor } from '../src/patients/energy-calculations/enums/injury-factor.enum'
 import { Food } from '../src/foods/enums/food.enum'
 import { exit } from 'process'
 
@@ -116,8 +116,12 @@ function generateRandomGender(): 'male' | 'female' {
 
 function generateRandomEnergyCalculation() {
   const formulas = Object.values(EnergyCalculationFormula)
-  const activityFactors = Object.values(PhysicalActivityFactor)
-  const injuryFactors = Object.values(InjuryFactor)
+  const activityFactors = Object.values(PhysicalActivityFactor).filter(
+    (v) => typeof v === 'number',
+  ) as number[]
+  const injuryFactors = Object.values(InjuryFactor).filter(
+    (v) => typeof v === 'number',
+  ) as number[]
   
   return {
     height: randomInt(150, 200),
@@ -219,6 +223,7 @@ async function main() {
   let totalPatients = 0
   let totalMealPlans = 0
   let totalAnamnesisItems = 0
+  let totalEnergyCalculations = 0
   let patientCounter = 1
 
   for (const user of createdUsers) {
@@ -294,6 +299,7 @@ async function main() {
 
       if (energyDoc) {
         await PatientModel.findByIdAndUpdate(patientId, { energyCalculation: energyDoc._id }, { new: false }).lean()
+        totalEnergyCalculations += ENERGY_CALCULATIONS_PER_PATIENT
       }
     }
   }
@@ -303,7 +309,7 @@ async function main() {
   console.log(`   - ${totalPatients} patients created`)
   console.log(`   - ${totalMealPlans} meal plans created`)
   console.log(`   - ${totalAnamnesisItems} anamnesis items created`)
-  console.log(`   - ${totalPatients * ENERGY_CALCULATIONS_PER_PATIENT} energy calculations created`)
+  console.log(`   - ${totalEnergyCalculations} energy calculations created`)
 
   await mongoose.disconnect()
 }
