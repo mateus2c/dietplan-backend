@@ -134,6 +134,87 @@ describe('Anamnesis (e2e)', () => {
         expect(Array.isArray(res.body.items)).toBe(true);
         expect(res.body.items.length).toBeGreaterThanOrEqual(2);
       });
+
+      it('returns complete structure with all required fields', async () => {
+        const res = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Complete Structure Test',
+            description: 'Testing complete response structure',
+          })
+          .expect(201);
+        expect(res.body).toHaveProperty('id');
+        expect(res.body).toHaveProperty('patientId', patientId);
+        expect(Array.isArray(res.body.items)).toBe(true);
+        expect(res.body.items.length).toBeGreaterThan(0);
+        const newItem = res.body.items[res.body.items.length - 1];
+        expect(newItem).toHaveProperty('title', 'Complete Structure Test');
+        expect(newItem).toHaveProperty('description', 'Testing complete response structure');
+        expect(newItem).toHaveProperty('_id');
+      });
+
+      it('created item corresponds to the correct patient', async () => {
+        const res = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Patient Correspondence Test',
+            description: 'Verifying item belongs to correct patient',
+          })
+          .expect(201);
+        expect(res.body.patientId).toBe(patientId);
+        const newItem = res.body.items[res.body.items.length - 1];
+        expect(newItem).toBeTruthy();
+        expect(newItem.title).toBe('Patient Correspondence Test');
+      });
+
+      it('items are returned in correct order (newest last)', async () => {
+        const firstRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'First Item',
+            description: 'First description',
+          })
+          .expect(201);
+        const firstItemId = String(
+          firstRes.body.items[firstRes.body.items.length - 1]._id ||
+            firstRes.body.items[firstRes.body.items.length - 1].id,
+        );
+
+        const secondRes = await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Second Item',
+            description: 'Second description',
+          })
+          .expect(201);
+        const secondItemId = String(
+          secondRes.body.items[secondRes.body.items.length - 1]._id ||
+            secondRes.body.items[secondRes.body.items.length - 1].id,
+        );
+
+        // Verify both items are in the response
+        expect(secondRes.body.items.length).toBeGreaterThan(firstRes.body.items.length);
+        const firstItemInList = secondRes.body.items.find(
+          (item: any) => String(item._id || item.id) === firstItemId,
+        );
+        const secondItemInList = secondRes.body.items.find(
+          (item: any) => String(item._id || item.id) === secondItemId,
+        );
+        expect(firstItemInList).toBeTruthy();
+        expect(secondItemInList).toBeTruthy();
+        // Second item should be after first item in the array
+        const firstIndex = secondRes.body.items.findIndex(
+          (item: any) => String(item._id || item.id) === firstItemId,
+        );
+        const secondIndex = secondRes.body.items.findIndex(
+          (item: any) => String(item._id || item.id) === secondItemId,
+        );
+        expect(secondIndex).toBeGreaterThan(firstIndex);
+      });
     });
 
     describe('Error cases (2.3)', () => {
@@ -220,6 +301,54 @@ describe('Anamnesis (e2e)', () => {
           .post(`/patients/${patientId}/anamnesis`)
           .set('Authorization', `Bearer ${token}`)
           .send({ title: '   ', description: '   ' })
+          .expect(400);
+      });
+
+      it('returns 400 when title is a number', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: 123456, description: 'Valid description' })
+          .expect(400);
+      });
+
+      it('returns 400 when title is an object', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: {}, description: 'Valid description' })
+          .expect(400);
+      });
+
+      it('returns 400 when title is an array', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: [], description: 'Valid description' })
+          .expect(400);
+      });
+
+      it('returns 400 when description is a number', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: 'Valid title', description: 123456 })
+          .expect(400);
+      });
+
+      it('returns 400 when description is an object', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: 'Valid title', description: {} })
+          .expect(400);
+      });
+
+      it('returns 400 when description is an array', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/anamnesis`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: 'Valid title', description: [] })
           .expect(400);
       });
     });
@@ -415,6 +544,54 @@ describe('Anamnesis (e2e)', () => {
           .patch(`/patients/${patientId}/anamnesis/${itemId}`)
           .set('Authorization', `Bearer ${token}`)
           .send({ description: '   ' })
+          .expect(400);
+      });
+
+      it('returns 400 when updating title with a number', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: 123456 })
+          .expect(400);
+      });
+
+      it('returns 400 when updating title with an object', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: {} })
+          .expect(400);
+      });
+
+      it('returns 400 when updating title with an array', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ title: [] })
+          .expect(400);
+      });
+
+      it('returns 400 when updating description with a number', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ description: 123456 })
+          .expect(400);
+      });
+
+      it('returns 400 when updating description with an object', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ description: {} })
+          .expect(400);
+      });
+
+      it('returns 400 when updating description with an array', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/anamnesis/${itemId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ description: [] })
           .expect(400);
       });
     });
