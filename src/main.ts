@@ -12,8 +12,8 @@ async function bootstrap() {
     .setVersion('1.0.0')
     .addBearerAuth()
     .addTag('App')
-    .addTag('foods')
     .addTag('auth')
+    .addTag('foods')
     .addTag('patients')
     .addTag('patients/meal-plans', 'Meal plans for patients')
     .addTag('patients/anamnesis', 'Anamnesis for patients')
@@ -27,8 +27,8 @@ async function bootstrap() {
       tagsSorter: (a: string, b: string) => {
         const order = [
           'App',
-          'foods',
           'auth',
+          'foods',
           'patients',
           'patients/meal-plans',
           'patients/anamnesis',

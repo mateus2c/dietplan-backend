@@ -126,6 +126,146 @@ describe('Meal Plans (e2e)', () => {
     await mongod.stop();
   });
 
+  describe('POST /patients/:patientId/meal-plans', () => {
+    describe('Field validation', () => {
+      it('returns 400 when foodId is invalid enum value', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Invalid Food Plan',
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: 'invalid_food', quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when foodId is a number', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Invalid Food Plan',
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: 123, quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when foodId is an object', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Invalid Food Plan',
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: { id: 'oats' }, quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when foodId is an array', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/meal-plans`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            title: 'Invalid Food Plan',
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: ['oats'], quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+    });
+  });
+
+  describe('PATCH /patients/:patientId/meal-plans/:planId', () => {
+    describe('Field validation', () => {
+      it('returns 400 when foodId is invalid enum value', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/meal-plans/${planId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: 'invalid_food', quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when foodId is a number', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/meal-plans/${planId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: 123, quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when foodId is an object', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/meal-plans/${planId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: { id: 'oats' }, quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when foodId is an array', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}/meal-plans/${planId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            meals: [
+              {
+                name: 'Breakfast',
+                time: '08:00',
+                items: [{ foodId: ['oats'], quantityGrams: 100 }],
+              },
+            ],
+          })
+          .expect(400);
+      });
+    });
+  });
+
   describe('DELETE /patients/:patientId/meal-plans/:planId', () => {
     describe('Success cases', () => {
       it('deletes plan and returns updated document', async () => {

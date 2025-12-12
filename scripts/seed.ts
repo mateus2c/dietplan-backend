@@ -12,7 +12,7 @@ import {
 import { EnergyCalculationFormula } from '../src/patients/energy-calculation/enums/energy-calculation-formula.enum'
 import { PhysicalActivityFactor } from '../src/patients/energy-calculation/enums/physical-activity-factor.enum'
 import { InjuryFactor } from '../src/patients/energy-calculation/enums/injury-factor.enum'
-import { FOODS } from '../src/foods/foods.data'
+import { Food } from '../src/foods/enums/food.enum'
 import { exit } from 'process'
 
 async function main() {
@@ -55,7 +55,10 @@ async function main() {
     createdUsers.push({ id: created._id.toString(), email: created.email })
   }
 
-  const pickFood = (id: string) => FOODS.find((f) => f.id === id)?.id || FOODS[0].id
+  const pickFood = (id: string): Food => {
+    const foodValue = Object.values(Food).find((f) => f === id)
+    return foodValue || Food.OATS
+  }
 
   // Fixed quantities: 3 patients per user, 3 meal plans per patient, 3 anamnesis items per patient
   const PATIENTS_PER_USER = 3
