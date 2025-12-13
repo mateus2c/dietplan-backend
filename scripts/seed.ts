@@ -114,6 +114,12 @@ function generateRandomGender(): 'male' | 'female' {
   return Math.random() < 0.5 ? 'male' : 'female'
 }
 
+function generateRandomLeanBodyMass(weight: number): number {
+  // Massa magra geralmente representa 60-80% do peso corporal
+  const percentage = randomFloat(0.6, 0.8)
+  return Math.round(weight * percentage * 10) / 10
+}
+
 function generateRandomEnergyCalculation() {
   const formulas = Object.values(EnergyCalculationFormula)
   const activityFactors = Object.values(PhysicalActivityFactor).filter(
@@ -123,13 +129,17 @@ function generateRandomEnergyCalculation() {
     (v) => typeof v === 'number',
   ) as number[]
   
+  const weight = randomInt(45, 120)
+  const leanBodyMass = Math.random() < 0.6 ? generateRandomLeanBodyMass(weight) : undefined
+  
   return {
     height: randomInt(150, 200),
-    weight: randomInt(45, 120),
+    weight,
     energyCalculationFormula: randomElement(formulas),
     physicalActivityFactor: randomElement(activityFactors),
     injuryFactor: randomElement(injuryFactors),
     pregnancyEnergyAdditional: Math.random() < 0.1 ? randomInt(200, 500) : 0,
+    leanBodyMass,
   }
 }
 
@@ -244,6 +254,9 @@ async function main() {
         continue
       }
 
+      const weight = randomInt(45, 120)
+      const leanBodyMass = Math.random() < 0.7 ? generateRandomLeanBodyMass(weight) : undefined
+
       const patient = await PatientModel.create({
         user: userId,
         fullName,
@@ -251,6 +264,7 @@ async function main() {
         birthDate,
         phone,
         email,
+        leanBodyMass,
       })
       const patientId = patient._id
       totalPatients++

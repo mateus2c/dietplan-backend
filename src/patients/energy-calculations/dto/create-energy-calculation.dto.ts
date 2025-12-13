@@ -60,4 +60,14 @@ export class CreateEnergyCalculationDto {
   @IsNumber()
   @Min(0)
   pregnancyEnergyAdditional?: number;
+
+  @ApiPropertyOptional({
+    description: 'Massa magra em kg',
+    example: 55,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  leanBodyMass?: number;
 }

@@ -15,11 +15,14 @@ export class Patient {
   @Prop({ required: true, trim: true })
   fullName: string;
 
-  @Prop({ required: true, enum: ['male', 'female', 'other'] })
-  gender: 'male' | 'female' | 'other';
+  @Prop({ required: true, enum: ['male', 'female'] })
+  gender: 'male' | 'female';
 
   @Prop({ required: true, type: Date })
   birthDate: Date;
+
+  @Prop({ type: Number, required: false, min: 0 })
+  leanBodyMass?: number; // Massa magra em kg
 
   @Prop({ required: true, unique: true, trim: true })
   phone: string;

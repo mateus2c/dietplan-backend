@@ -314,21 +314,6 @@ describe('Patients (e2e)', () => {
         expect(res.body.gender).toBe('female');
       });
 
-      it('creates patient with gender other', async () => {
-        const res = await request(app.getHttpServer())
-          .post('/patients')
-          .set('Authorization', `Bearer ${token}`)
-          .send({
-            fullName: 'Other Patient',
-            gender: 'other',
-            birthDate: '1990-05-20',
-            phone: '+55 11 90000-5555',
-            email: 'other@example.com',
-          })
-          .expect(201);
-        expect(res.body.gender).toBe('other');
-      });
-
       it('returns 400 when gender is invalid', async () => {
         await request(app.getHttpServer())
           .post('/patients')
@@ -602,7 +587,70 @@ describe('Patients (e2e)', () => {
       });
     });
 
-    describe('Conflict cases (1.7)', () => {
+    describe('leanBodyMass validation (1.7)', () => {
+      it('creates patient with leanBodyMass', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'Patient With Lean Mass',
+            gender: 'male',
+            birthDate: '1990-05-20',
+            phone: '+55 11 90000-9999',
+            email: 'leanmass@example.com',
+            leanBodyMass: 65.5,
+          })
+          .expect(201);
+        expect(res.body).toHaveProperty('leanBodyMass', 65.5);
+      });
+
+      it('creates patient without leanBodyMass', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'Patient Without Lean Mass',
+            gender: 'female',
+            birthDate: '1990-05-20',
+            phone: '+55 11 90000-9998',
+            email: 'noleanmass@example.com',
+          })
+          .expect(201);
+        expect(res.body.leanBodyMass).toBeUndefined();
+      });
+
+      it('returns 400 when leanBodyMass is negative', async () => {
+        await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'Test Name',
+            gender: 'female',
+            birthDate: '1990-05-20',
+            phone: '+55 11 91234-5678',
+            email: 'test@example.com',
+            leanBodyMass: -10,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when leanBodyMass is not a number', async () => {
+        await request(app.getHttpServer())
+          .post('/patients')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fullName: 'Test Name',
+            gender: 'female',
+            birthDate: '1990-05-20',
+            phone: '+55 11 91234-5678',
+            email: 'test@example.com',
+            leanBodyMass: 'not-a-number',
+          })
+          .expect(400);
+      });
+    });
+
+    describe('Conflict cases (1.8)', () => {
       it('returns 409 when email is duplicate', async () => {
         await request(app.getHttpServer())
           .post('/patients')
@@ -954,10 +1002,10 @@ describe('Patients (e2e)', () => {
         const res = await request(app.getHttpServer())
           .patch(`/patients/${patientId}`)
           .set('Authorization', `Bearer ${token}`)
-          .send({ gender: 'other' })
+          .send({ gender: 'male' })
           .expect(200);
         expect(res.body).toHaveProperty('id', patientId);
-        expect(res.body).toHaveProperty('gender', 'other');
+        expect(res.body).toHaveProperty('gender', 'male');
       });
 
       it('updates patient birthDate', async () => {
@@ -974,10 +1022,10 @@ describe('Patients (e2e)', () => {
         const res = await request(app.getHttpServer())
           .patch(`/patients/${patientId}`)
           .set('Authorization', `Bearer ${token}`)
-          .send({ phone: '+55 11 90000-9999' })
+          .send({ phone: '+55 11 90000-8888' })
           .expect(200);
         expect(res.body).toHaveProperty('id', patientId);
-        expect(res.body).toHaveProperty('phone', '+55 11 90000-9999');
+        expect(res.body).toHaveProperty('phone', '+55 11 90000-8888');
       });
 
       it('updates patient email', async () => {
@@ -988,6 +1036,16 @@ describe('Patients (e2e)', () => {
           .expect(200);
         expect(res.body).toHaveProperty('id', patientId);
         expect(res.body).toHaveProperty('email', 'jane.updated@example.com');
+      });
+
+      it('updates patient leanBodyMass', async () => {
+        const res = await request(app.getHttpServer())
+          .patch(`/patients/${patientId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ leanBodyMass: 60.5 })
+          .expect(200);
+        expect(res.body).toHaveProperty('id', patientId);
+        expect(res.body).toHaveProperty('leanBodyMass', 60.5);
       });
     });
 
@@ -1122,6 +1180,22 @@ describe('Patients (e2e)', () => {
           .send({ email: '   ' })
           .expect(400);
       });
+
+      it('returns 400 when leanBodyMass is negative', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ leanBodyMass: -5 })
+          .expect(400);
+      });
+
+      it('returns 400 when leanBodyMass is not a number', async () => {
+        await request(app.getHttpServer())
+          .patch(`/patients/${patientId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ leanBodyMass: 'invalid' })
+          .expect(400);
+      });
     });
 
     describe('ID validation (4.1)', () => {
@@ -1219,6 +1293,7 @@ describe('Patients (e2e)', () => {
         expect(res.body).toHaveProperty('birthDate');
         expect(res.body).toHaveProperty('phone');
         expect(res.body).toHaveProperty('email');
+        expect(res.body).toHaveProperty('leanBodyMass');
       });
     });
   });
@@ -1226,6 +1301,7 @@ describe('Patients (e2e)', () => {
   describe('DELETE /patients/:id', () => {
     describe('Success cases (5.3)', () => {
       it('deletes patient and returns deleted confirmation', async () => {
+        const timestamp = Date.now();
         const created = await request(app.getHttpServer())
           .post('/patients')
           .set('Authorization', `Bearer ${token}`)
@@ -1233,8 +1309,8 @@ describe('Patients (e2e)', () => {
             fullName: 'To Delete',
             gender: 'male',
             birthDate: '1990-01-01',
-            phone: '+55 11 90000-9999',
-            email: 'todelete@example.com',
+            phone: `+55 11 90000-${String(timestamp).slice(-4)}`,
+            email: `todelete.${timestamp}@example.com`,
           })
           .expect(201);
         const deleteId = created.body.id;
@@ -1247,6 +1323,7 @@ describe('Patients (e2e)', () => {
       });
 
       it('returns 404 when trying to get deleted patient', async () => {
+        const timestamp = Date.now();
         const created = await request(app.getHttpServer())
           .post('/patients')
           .set('Authorization', `Bearer ${token}`)
@@ -1254,8 +1331,8 @@ describe('Patients (e2e)', () => {
             fullName: 'To Delete 2',
             gender: 'female',
             birthDate: '1990-01-01',
-            phone: '+55 11 90000-9998',
-            email: 'todelete2@example.com',
+            phone: `+55 11 90000-${String(timestamp + 1).slice(-4)}`,
+            email: `todelete2.${timestamp}@example.com`,
           })
           .expect(201);
         const deleteId = created.body.id;
@@ -1272,15 +1349,16 @@ describe('Patients (e2e)', () => {
       });
 
       it('returns 404 when trying to delete again', async () => {
+        const timestamp = Date.now();
         const created = await request(app.getHttpServer())
           .post('/patients')
           .set('Authorization', `Bearer ${token}`)
           .send({
             fullName: 'To Delete 3',
-            gender: 'other',
+            gender: 'male',
             birthDate: '1990-01-01',
-            phone: '+55 11 90000-9997',
-            email: 'todelete3@example.com',
+            phone: `+55 11 90000-${String(timestamp + 3).slice(-4)}`,
+            email: `todelete3.${timestamp}@example.com`,
           })
           .expect(201);
         const deleteId = created.body.id;
@@ -1660,7 +1738,7 @@ describe('Patients (e2e)', () => {
       await request(app.getHttpServer())
         .patch(`/patients/${pid}`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ gender: 'other' })
+        .send({ gender: 'male' })
         .expect(200);
 
       await request(app.getHttpServer())
@@ -1675,7 +1753,7 @@ describe('Patients (e2e)', () => {
         .expect(200);
 
       expect(final.body.fullName).toBe('Update 1');
-      expect(final.body.gender).toBe('other');
+      expect(final.body.gender).toBe('male');
       expect(final.body.phone).toBe('+55 11 90000-8884');
       expect(final.body.email).toBe('multiupdate@example.com');
     });

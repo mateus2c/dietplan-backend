@@ -40,6 +40,9 @@ export class EnergyCalculationEntry {
 
   @Prop({ type: Number, required: false, min: 0 })
   pregnancyEnergyAdditional?: number; // Adicional energético de gestante (kcal)
+
+  @Prop({ type: Number, required: false, min: 0 })
+  leanBodyMass?: number; // Massa magra em kg
 }
 
 const EnergyCalculationEntrySchema = SchemaFactory.createForClass(

@@ -4,9 +4,11 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Min,
   MinLength,
   ValidateIf,
 } from 'class-validator';
@@ -22,15 +24,26 @@ export class UpdatePatientDto {
   @MinLength(3)
   fullName?: string;
 
-  @ApiPropertyOptional({ enum: ['male', 'female', 'other'] })
+  @ApiPropertyOptional({ enum: ['male', 'female'] })
   @IsOptional()
-  @IsEnum(['male', 'female', 'other'])
-  gender?: 'male' | 'female' | 'other';
+  @IsEnum(['male', 'female'])
+  gender?: 'male' | 'female';
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsDateString()
   birthDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Massa magra em kg',
+    example: 55,
+    minimum: 0,
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.leanBodyMass !== undefined)
+  @IsNumber()
+  @Min(0)
+  leanBodyMass?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

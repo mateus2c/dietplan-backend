@@ -197,6 +197,13 @@ export class EnergyCalculationService {
       setPayload['calculations.$.pregnancyEnergyAdditional'] =
         partial.pregnancyEnergyAdditional;
     }
+    if (
+      partial.leanBodyMass !== undefined &&
+      (!currentCalculation ||
+        currentCalculation.leanBodyMass !== partial.leanBodyMass)
+    ) {
+      setPayload['calculations.$.leanBodyMass'] = partial.leanBodyMass;
+    }
     if (Object.keys(setPayload).length === 0) {
       return {
         id: currentDoc._id.toString(),
@@ -224,6 +231,7 @@ export class EnergyCalculationService {
         physicalActivityFactor: c.physicalActivityFactor,
         injuryFactor: c.injuryFactor,
         pregnancyEnergyAdditional: c.pregnancyEnergyAdditional,
+        leanBodyMass: c.leanBodyMass,
       }));
       await this.energyCalculationModel
         .findOneAndUpdate(

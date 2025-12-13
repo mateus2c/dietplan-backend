@@ -1,11 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
+  IsOptional,
   IsString,
   Matches,
+  Min,
   MinLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
@@ -18,13 +21,23 @@ export class CreatePatientDto {
   @MinLength(3)
   fullName: string;
 
-  @ApiProperty({ enum: ['male', 'female', 'other'], description: 'Gênero' })
-  @IsEnum(['male', 'female', 'other'])
-  gender: 'male' | 'female' | 'other';
+  @ApiProperty({ enum: ['male', 'female'], description: 'Gênero' })
+  @IsEnum(['male', 'female'])
+  gender: 'male' | 'female';
 
   @ApiProperty({ description: 'Data de nascimento (YYYY-MM-DD)' })
   @IsDateString()
   birthDate: string;
+
+  @ApiPropertyOptional({
+    description: 'Massa magra em kg',
+    example: 55,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  leanBodyMass?: number;
 
   @ApiProperty({ description: 'Telefone' })
   @IsString()

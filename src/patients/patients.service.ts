@@ -41,10 +41,11 @@ export class PatientsService {
     userId: string,
     data: {
       fullName: string;
-      gender: 'male' | 'female' | 'other';
+      gender: 'male' | 'female';
       birthDate: string;
       phone: string;
       email: string;
+      leanBodyMass?: number;
     },
   ) {
     if (!isValidObjectId(userId)) {
@@ -73,6 +74,7 @@ export class PatientsService {
       birthDate: new Date(data.birthDate),
       phone: data.phone,
       email: data.email,
+      leanBodyMass: data.leanBodyMass,
     });
     return {
       id: created._id.toString(),
@@ -82,6 +84,7 @@ export class PatientsService {
       birthDate: new Date(created.birthDate).toISOString(),
       phone: created.phone,
       email: created.email,
+      leanBodyMass: created.leanBodyMass,
     };
   }
 
@@ -103,6 +106,7 @@ export class PatientsService {
       birthDate: new Date(patient.birthDate).toISOString(),
       phone: patient.phone,
       email: patient.email,
+      leanBodyMass: patient.leanBodyMass,
     };
   }
 
@@ -111,10 +115,11 @@ export class PatientsService {
     userId: string,
     data: Partial<{
       fullName: string;
-      gender: 'male' | 'female' | 'other';
+      gender: 'male' | 'female';
       birthDate: string;
       phone: string;
       email: string;
+      leanBodyMass?: number;
     }>,
   ) {
     if (!isValidObjectId(id)) {
@@ -160,6 +165,12 @@ export class PatientsService {
       }
       updatePayload.email = data.email;
     }
+    if (
+      data.leanBodyMass !== undefined &&
+      current.leanBodyMass !== data.leanBodyMass
+    ) {
+      updatePayload.leanBodyMass = data.leanBodyMass;
+    }
 
     if (Object.keys(updatePayload).length === 0) {
       return {
@@ -169,6 +180,7 @@ export class PatientsService {
         birthDate: new Date(current.birthDate).toISOString(),
         phone: current.phone,
         email: current.email,
+        leanBodyMass: current.leanBodyMass,
       };
     }
 
@@ -185,6 +197,7 @@ export class PatientsService {
       birthDate: new Date(updated.birthDate).toISOString(),
       phone: updated.phone,
       email: updated.email,
+      leanBodyMass: updated.leanBodyMass,
     };
   }
 
@@ -251,6 +264,7 @@ export class PatientsService {
         birthDate: new Date(patient.birthDate).toISOString(),
         phone: patient.phone,
         email: patient.email,
+        leanBodyMass: patient.leanBodyMass,
       })),
     };
   }
