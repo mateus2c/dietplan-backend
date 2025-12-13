@@ -1,34 +1,31 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsIn, IsNumber, IsOptional, Min } from 'class-validator';
 import { EnergyCalculationFormula } from '../enums/energy-calculation-formula.enum';
 import { PhysicalActivityFactor } from '../enums/physical-activity-factor.enum';
 import { InjuryFactor } from '../enums/injury-factor.enum';
 
 export class CreateEnergyCalculationDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Altura em cm',
     example: 170,
     minimum: 0,
   })
-  @IsOptional()
   @IsNumber()
   @Min(0)
-  height?: number;
+  height: number;
 
-  @ApiPropertyOptional({ description: 'Peso em kg', example: 70, minimum: 0 })
-  @IsOptional()
+  @ApiProperty({ description: 'Peso em kg', example: 70, minimum: 0 })
   @IsNumber()
   @Min(0)
-  weight?: number;
+  weight: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     enum: EnergyCalculationFormula,
     description: 'Fórmula para cálculo teórico',
     example: EnergyCalculationFormula.HARRIS_BENEDICT_1984,
   })
-  @IsOptional()
   @IsEnum(EnergyCalculationFormula)
-  energyCalculationFormula?: EnergyCalculationFormula;
+  energyCalculationFormula: EnergyCalculationFormula;
 
   @ApiPropertyOptional({
     enum: PhysicalActivityFactor,

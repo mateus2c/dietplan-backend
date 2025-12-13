@@ -227,6 +227,123 @@ describe('Energy Calculation (e2e)', () => {
           .expect(400);
       });
 
+      it('returns 400 when height is missing', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when weight is missing', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when energyCalculationFormula is missing', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: 70,
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when height is null', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: null,
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when weight is null', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: null,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when energyCalculationFormula is null', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: 70,
+            energyCalculationFormula: null,
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when height is empty string', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: '',
+            weight: 70,
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
+      it('returns 400 when weight is empty string', async () => {
+        await request(app.getHttpServer())
+          .post(`/patients/${patientId}/energy-calculations`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            height: 170,
+            weight: '',
+            energyCalculationFormula: 'harris-benedict-1984',
+            physicalActivityFactor: 1.2,
+            injuryFactor: 1.0,
+            pregnancyEnergyAdditional: 0,
+          })
+          .expect(400);
+      });
+
       it('returns 401 when not authenticated', async () => {
         await request(app.getHttpServer())
           .post(`/patients/${patientId}/energy-calculations`)
